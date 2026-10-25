@@ -144,12 +144,11 @@ Impostazione del suono a fine recupero (tre bip con Web Audio, tasto Prova) e sc
    - tolto l'hollow rock del venerdì;
    - i Mike Tyson push-up del mercoledì erano stati tolti e poi rimessi su richiesta (3 × 18-25).
 5. Modalità guidata "una serie alla volta"; poi editor dei programmi, alternative modificabili, esportazione CSV.
-6. Versione ospitata su Claude con salvataggio su cloud: costruita e poi **eliminata su richiesta**. Non riproporla.
+6. Versione ospitata su Claude con salvataggio su cloud: costruita e poi **eliminata su richiesta**. Non riproporla. Il codice residuo (`cloudInit`, `cloudFlush`, download tramite `window.claude`) è stato rimosso.
 7. Scelta finale: **GitHub Pages** (repository pubblico: il codice è leggibile, i dati no) più **Dropbox**.
 
 ## Limiti noti e lavoro possibile
 - **Già discusso ma non fatto**: calendario settimanale (programma per giorno), settimana di scarico, misure corporee e foto dei progressi, modalità "seduta breve".
 - **Programmi e impostazioni** in conflitto tra dispositivi: vince l'ultima modifica, senza fusione campo per campo.
 - **Foto** solo in locale. Gli esercizi personalizzati non hanno figura. Le alternative create dall'utente ereditano serie e obiettivo dell'esercizio di partenza.
-- **Codice inattivo**: c'è ancora il codice del salvataggio su cloud di Claude (`cloudInit`, `cloudFlush`), che fuori da Claude non fa nulla. Si può rimuovere con attenzione.
 - Il nome dell'opzione Dropbox "Allow public clients" non è stato verificato: se esiste, deve restare su Allow.
