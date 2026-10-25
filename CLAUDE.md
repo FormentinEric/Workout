@@ -58,17 +58,19 @@ Flusso di modifica, sempre:
   - le sedute eliminate finiscono in `tomb`, altrimenti risorgono da un altro dispositivo.
 
 ## Test
-Usa Playwright (Chromium) a 390×844:
-- servi `index.html` intercettando `https://<utente>.github.io/scheda/` con `page.route`;
-- simula gli endpoint Dropbox:
+`node tools/test.js` esegue tutti i test; `node tools/test.js foto dropbox` solo quelli con queste parole nel nome. Serve il pacchetto `playwright` con Chromium.
+- Serve la cartella su `http://localhost:<porta>/Workout/`, come GitHub Pages, con viewport 390×844.
+- Simula gli endpoint Dropbox:
   - `api.dropboxapi.com/oauth2/token`;
   - `content.dropboxapi.com/2/files/download|upload`, con `rev` e 409 per i conflitti;
   - le intestazioni CORS, compresa l'esposizione di `dropbox-api-result`.
+- Fallisce se compaiono `pageerror` o errori in console. Fanno eccezione i 409 di Dropbox, previsti dal protocollo.
+- Per i dati vecchi usa l'opzione `seed` di `Session.open`: carica stati salvati nel formato precedente e controlla che vengano letti correttamente.
 
-Verifica che non ci siano `pageerror` né errori in console. Per i dati vecchi, carica stati salvati con il formato precedente e controlla che vengano letti correttamente.
+Ogni modifica va coperta da un test in `tools/test.js`.
 
 ## Pubblicazione
-- Repository GitHub pubblico, Pages: "Deploy from a branch" → `main` / root. URL: `https://<utente>.github.io/scheda/`.
+- Repository GitHub pubblico, Pages: "Deploy from a branch" → `main` / root. URL: `https://<utente>.github.io/Workout/` (il percorso è il nome del repository).
 - App Dropbox:
   - Scoped access, **App folder**;
   - permessi `files.content.read` e `files.content.write`;
