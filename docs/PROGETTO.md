@@ -150,5 +150,5 @@ Impostazione del suono a fine recupero (tre bip con Web Audio, tasto Prova) e sc
 ## Limiti noti e lavoro possibile
 - **Già discusso ma non fatto**: calendario settimanale (programma per giorno), settimana di scarico, misure corporee e foto dei progressi, modalità "seduta breve".
 - **Programmi e impostazioni** in conflitto tra dispositivi: vince l'ultima modifica, senza fusione campo per campo.
-- **Foto** solo in locale. Gli esercizi personalizzati non hanno figura. Le alternative create dall'utente ereditano serie e obiettivo dell'esercizio di partenza.
+- **Foto** solo in locale, in IndexedDB (non in localStorage, che su Safari ha circa 5 MB per tutto il sito). Non vanno nel backup né su Dropbox. Gli esercizi personalizzati non hanno figura. Le alternative create dall'utente ereditano serie e obiettivo dell'esercizio di partenza.
 - Il nome dell'opzione Dropbox "Allow public clients" non è stato verificato: se esiste, deve restare su Allow.

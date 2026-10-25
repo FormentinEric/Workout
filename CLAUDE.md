@@ -40,8 +40,9 @@ Flusso di modifica, sempre:
   - `scheda-elastici-v1`: stato principale (JSON);
   - `scheda-elastici-v1:t`: ora dell'ultima modifica *dei dati*;
   - `scheda-storico-v1`: storico;
-  - `scheda-foto-v1`: foto;
+  - `scheda-foto-v1`: foto, solo nelle versioni vecchie. All'avvio vengono spostate in IndexedDB e la chiave viene cancellata;
   - `scheda-dropbox-v1`: token Dropbox, verificatore PKCE, rev, tombstone. Non va mai esportato nei backup.
+- Foto: IndexedDB, database `scheda-foto`, archivio `foto`, chiave = ID dell'esercizio, valore = data URL JPEG. Se IndexedDB non è disponibile si torna a `scheda-foto-v1`.
 - Chiavi dei dati delle serie:
   - serie: `${programmaId}-${esercizioId}-${k}`;
   - dati di una variante: aggiungere `~${altId}`.
