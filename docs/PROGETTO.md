@@ -75,9 +75,10 @@ Impostazione del suono a fine recupero (tre bip con Web Audio, tasto Prova) e sc
   - nome visualizzato, numero di serie;
   - obiettivo: Ripetizioni (min–max), Max, Tempo (passi di 5s) o Metri;
   - lato (per gamba, per braccio, per lato), kg di partenza, nota;
-  - **Alternative**: aggiungi o rimuovi;
+  - **Alternative**: aggiungi o rimuovi; per ognuna, serie e obiettivo dell'esercizio di partenza oppure propri (serie, ripetizioni, max, tempo o metri, lato). Nei superset e nei circuiti le serie seguono comunque i giri;
+  - **Figura** (solo esercizi personalizzati): generica oppure presa da un esercizio esistente, scelta con la ricerca esercizi;
   - spostamento anche tra blocchi, Cambia esercizio, Elimina.
-- **Ricerca esercizi**: testo e filtro per gruppo; quelli già presenti nel programma sono disattivati. Si possono creare esercizi personalizzati (nome, gruppo, misura in ripetizioni/tempo/metri, attrezzo: elastico, pesi o corpo libero); non hanno figura.
+- **Ricerca esercizi**: testo e filtro per gruppo; quelli già presenti nel programma sono disattivati. Si possono creare esercizi personalizzati (nome, gruppo, misura in ripetizioni/tempo/metri, attrezzo: elastico, pesi o corpo libero). Hanno una figura generica in piedi, con elastico o peso secondo l'attrezzo, finché non se ne sceglie una.
 - Le modifiche si salvano da sole.
 
 ## Logiche principali
@@ -102,8 +103,10 @@ Impostazione del suono a fine recupero (tre bip con Web Audio, tasto Prova) e sc
   ```
 - **Compilazione** (`compileProg`): righe `[bloccoId, exId, nome, sr, nota, kg]` con `sr` testuale (es. `4 × 12-15 per gamba`, `3 × 1:00`, `1 × 20 min`, `3 × 30 m`) più `meta[bloccoId] = {title, type, chain, giri, rest}`. Il resto del codice legge queste righe (`DAYS`).
 - **I quattro programmi originali** stanno in `DAYS0` e vengono convertiti con `toProg()`.
-- **Esercizi personalizzati**: `cex[id] = {name, grp, mode, band, kg}` → `LIB` tramite `applyCex()`.
-- **Alternative**: `ALT_BASE` (fisse) più `ualt[exId] = [{id, short, name, sr?, note?}]` tramite `applyUalt()`.
+- **Esercizi personalizzati**: `cex[id] = {name, grp, mode, band, kg, fig?}` → `LIB` tramite `applyCex()`. `fig` è l'ID di un esercizio di `LIB` di cui usare le pose (`figSrc()`); senza `fig` si usa `genFig()`.
+- **Alternative**: `ALT_BASE` (fisse) più `ualt[exId] = [{id, short, name, sr?, note?, t?}]` tramite `applyUalt()`.
+  - `t = {sets, mode, lo, hi, secs, dist, side}`: serie e obiettivo propri come li ha scritti l'utente; `sr` ne è la versione testuale (`rowSr(t,0)`), l'unica letta in allenamento. Senza `sr` la variante eredita quelli della riga.
+  - `altSr()` applica `sr` alla riga; nei blocchi superset e circuito mantiene il numero di serie della riga (i giri). `dayRows(day, st)` usa la variante scelta per contare le serie.
 - **Seduta nello storico**:
   ```
   {id:`${programma}-${t}`, day, pname, t, start, auto, dn, tot,
@@ -150,5 +153,6 @@ Impostazione del suono a fine recupero (tre bip con Web Audio, tasto Prova) e sc
 ## Limiti noti e lavoro possibile
 - **Già discusso ma non fatto**: calendario settimanale (programma per giorno), settimana di scarico, misure corporee e foto dei progressi, modalità "seduta breve".
 - **Programmi e impostazioni** in conflitto tra dispositivi: vince l'ultima modifica, senza fusione campo per campo.
-- **Foto** solo in locale, in IndexedDB (non in localStorage, che su Safari ha circa 5 MB per tutto il sito). Non vanno nel backup né su Dropbox. Gli esercizi personalizzati non hanno figura. Le alternative create dall'utente ereditano serie e obiettivo dell'esercizio di partenza.
+- **Foto** solo in locale, in IndexedDB (non in localStorage, che su Safari ha circa 5 MB per tutto il sito). Non vanno nel backup né su Dropbox.
+- **Alternative** legate all'esercizio, non al programma: serie e obiettivo propri di una variante valgono in ogni programma in cui compare l'esercizio di partenza.
 - Il nome dell'opzione Dropbox "Allow public clients" non è stato verificato: se esiste, deve restare su Allow.
