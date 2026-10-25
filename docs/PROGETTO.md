@@ -114,6 +114,10 @@ Impostazione del suono a fine recupero (tre bip con Web Audio, tasto Prova) e sc
   ```
 - **Stato principale salvato**: `tab, done, sv, logs, links, mode, cur, alt, start, last, bands, combo, bandHint, eff, sound, lastExport, scombo, step, progs, cex, ualt, ver:2`.
 
+## Senza rete
+- `sw.js` salva `index.html` e l'icona. Con la rete la pagina arriva sempre da GitHub Pages, così una nuova pubblicazione si vede subito; senza rete, o se la rete non risponde entro 4s, si apre l'ultima copia salvata.
+- I dati sono comunque nel browser: senza rete si allena e si salva tutto; Dropbox si sincronizza al ritorno della connessione.
+
 ## Sincronizzazione Dropbox
 - **Collegamento**: PKCE S256, senza redirect URI. Dropbox mostra un codice che l'utente incolla, e funziona anche nella web app aperta dalla Home. Si usa `token_access_type=offline` per avere il refresh token. L'App key la inserisce l'utente.
 - **File**: `/scheda-allenamento.json` con contenuto `{app:'scheda-allenamento', v:1, upd, saved, main:<stringa JSON dello stato>, hist:[…], tomb:[id…]}`.

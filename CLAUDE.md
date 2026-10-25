@@ -75,3 +75,4 @@ Verifica che non ci siano `pageerror` né errori in console. Per i dati vecchi, 
   - nessun Redirect URI: la scheda usa PKCE e l'utente incolla il codice;
   - l'App key si inserisce nell'interfaccia (Storico → Sincronizzazione Dropbox), non nel codice.
 - File su Dropbox: `/scheda-allenamento.json` dentro la cartella dell'app.
+- `sw.js` (service worker, registrato da `swInit()`): rete prima di tutto; se la rete manca, dà errore o non risponde entro 4s, usa l'ultima copia di `index.html` e dell'icona. Tocca solo le GET dentro la cartella della scheda. Se cambi il formato della cache, cambia il nome `CACHE`: le copie vecchie vengono cancellate all'attivazione.
