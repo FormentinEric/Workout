@@ -14,6 +14,7 @@ Dettagli completi (funzioni, modello dati, decisioni prese, limiti): @docs/PROGE
 - `<script type="__bundler/manifest">`: risorse (runtime x-dc, React 18, ReactDOM, font Inter e Phosphor) in base64, alcune gzip.
 - `<script type="__bundler/template">`: **stringa JSON** con l'HTML interno. È qui che vive tutto il codice dell'app.
 - Il bootstrap del bundle crea blob URL per le risorse e imposta `window.__resources`. Il runtime x-dc compila la logica con `new Function`.
+- Eccezione: la `<head>` esterna contiene `<title>Allenamento</title>` e il link ad `apple-touch-icon.png`, aggiunti a mano (`pack` non li tocca). Gli stessi due tag sono anche nella `<head>` del template, perché il bootstrap sostituisce l'intero documento.
 
 Flusso di modifica, sempre:
 1. `python tools/bundle.py extract` → crea `build/template.html` (cartella ignorata da git).
