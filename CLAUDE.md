@@ -43,6 +43,7 @@ Icone Phosphor (`<i class="ph ph-nome">`): il template contiene solo le regole C
 - Props del componente (`data-props`): `dettaglio` ("Completo" o "Solo figure"), `tracking`, `timerAuto`.
 - **Regola**: ogni binding usato fuori da un `sc-for` deve avere un default nell'oggetto `base` di `renderVals()`, anche se compare solo in una sezione.
 - **Immagini nel markup**: niente `<img src="{{ … }}">`. Il bootstrap inserisce il template nel documento prima dei binding e il browser scaricherebbe l'URL letterale `{{ … }}` (404 in console). Usare un `div` con `role="img"` e `background-image:{{ x }}`, dove il binding contiene tutto `url("…")`.
+- Barra delle sezioni: `tabs` (5 voci) in `<nav class="tabbar">` fissa in basso, visibile solo con `topOn`. La sezione `altro` elenca Elastici e Regole (`moreList`), che mostrano “‹ Altro” con `backOn`. Il contenitore fisso del timer usa `dockB`/`dockPad` per stare sopra la barra; nella seduta torna sul fondo.
 - Schermata della seduta: binding `wk*` (intestazione e statistiche), `sh*`/`mn*`/`al*` (scheda dettagli, menu, varianti, Termina), righe delle serie in `wkGroups[].items[].sets`.
 - **Prestazioni**: ogni `save()` o `forceUpdate()` ridisegna tutta la pagina. Il runtime riconverte ogni attributo `style` a ogni ridisegno, React confronta tutti i nodi (~1000 nella seduta), e il calcolo di `renderVals()` pesa poco. Quindi:
   - il timer non ridisegna: `tick()` scrive direttamente in `#tm-text .sc-interp` (lo span che il runtime crea per `{{ timerText }}`) e in `#tm-bar`; valori da `tmShow()`, gli stessi di `timerVals()`;

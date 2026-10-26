@@ -120,7 +120,10 @@ class Session {
     if (await close.count()) await close.click();
     const back = this.pg.getByRole('button', { name: 'Torna ai programmi' });
     if (await back.count()) await back.click();
-    await this.nav.locator('button', { hasText: name }).click();
+    // Elastici e Regole stanno nella sezione Altro.
+    const more = ['Elastici', 'Regole'].includes(name);
+    await this.nav.locator('button', { hasText: more ? 'Altro' : name }).click();
+    if (more) await this.pg.locator('button', { hasText: new RegExp('^\\s*' + name) }).click();
   }
   card(name) { return this.pg.getByRole('region', { name, exact: true }); }
   set(card, n) { return card.getByRole('button', { name: new RegExp('^Serie ' + n + '(:| fatta)') }); }
@@ -766,6 +769,34 @@ test('schede animate e trascinabili, stato premuto', async env => {
   assert.deepStrictEqual(await anims(), []);
   await dlg.getByRole('button', { name: 'Chiudi' }).click();
   assert.strictEqual(await dlg.count(), 0);
+  await s.close();
+});
+
+test('barra delle sezioni in basso con Altro', async env => {
+  const s = await Session.open(env);
+  await s.load();
+  const box = await s.nav.boundingBox();
+  assert.strictEqual(Math.round(box.y + box.height), 844, 'attaccata al fondo');
+  const items = s.nav.getByRole('button');
+  assert.deepStrictEqual((await items.allInnerTexts()).map(x => x.trim()), ['Programmi', 'Mese', 'Storico', 'Editor', 'Altro']);
+  const current = () => s.nav.locator('[aria-current="page"]').innerText();
+  assert.strictEqual(await current(), 'Programmi');
+  await s.tab('Altro');
+  await s.pg.locator('button', { hasText: 'Regole' }).waitFor();
+  await s.tab('Elastici');
+  await s.pg.getByText('Aggiungi elastico').waitFor();
+  assert.strictEqual(await current(), 'Altro', 'Elastici sta in Altro');
+  await s.pg.locator('button', { hasText: /^\s*Altro\s*$/ }).first().click();   // freccia in alto
+  await s.pg.getByRole('heading', { name: 'Altro' }).waitFor();
+  await s.load();
+  await s.pg.getByRole('heading', { name: 'Altro' }).waitFor();   // sezione ricordata
+  // Un recupero lasciato attivo uscendo dalla seduta resta sopra la barra.
+  await s.openProg('Lunedì');
+  await s.pg.getByRole('button', { name: 'Avvia il recupero' }).click();
+  await s.pg.getByRole('button', { name: 'Torna ai programmi' }).click();
+  const tm = await s.pg.locator('#tm-text').evaluate(async e => { const c = e.closest('.pop-up'); await Promise.all(c.getAnimations().map(a => a.finished)); return c.getBoundingClientRect().bottom; });
+  const nav = await s.nav.evaluate(e => e.getBoundingClientRect().top);
+  assert.ok(tm <= nav, `timer (${tm}) sopra la barra (${nav})`);
   await s.close();
 });
 

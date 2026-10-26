@@ -10,7 +10,9 @@ Riepilogo della chat in cui è nata la scheda (ottobre 2026). Il codice in `inde
   - sedie, divano, gradino, zaino o valigia per caricare, corda per saltare.
 - **Non** ha più la barra pilates (da ottobre 2026): niente esercizi che la richiedono.
 
-## Schermate (barra in alto: Programmi · Mese · Storico · Elastici · Regole · Editor; nascosta durante la seduta)
+## Schermate (barra in basso: Programmi · Mese · Storico · Editor · Altro; nascosta durante la seduta)
+
+La barra sta in fondo allo schermo, come nelle app iOS, sopra l'area del gesto Home. **Altro** raccoglie Elastici e Regole, che hanno “‹ Altro” in alto per tornare. Se un recupero resta attivo uscendo dalla seduta, il timer compare sopra la barra.
 
 ### Programmi
 - Elenco delle routine. Per ognuna: nome, descrizione, numero di esercizi e di serie, quando è stata fatta l'ultima volta.
@@ -69,10 +71,10 @@ Calendario del mese con i giorni di allenamento (abbreviazione della routine) e 
   - Importa: unisce le sedute e ripristina programmi, esercizi personalizzati e alternative;
   - salvataggio dei file con condivisione iOS o download.
 
-### Elastici
+### Elastici (in Altro)
 Catalogo con nome, colore (tocco sul cerchio per cambiarlo) e kg. Si elimina con doppio tocco.
 
-### Regole
+### Regole (in Altro)
 Impostazione del suono a fine recupero (tre bip con Web Audio, tasto Prova) e schede di regole (progressione, intensità, alternative, Dropbox…).
 
 ### Editor
