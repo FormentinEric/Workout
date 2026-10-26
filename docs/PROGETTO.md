@@ -10,7 +10,9 @@ Riepilogo della chat in cui è nata la scheda (ottobre 2026). Il codice in `inde
   - sedie, divano, gradino, zaino o valigia per caricare, corda per saltare.
 - **Non** ha più la barra pilates (da ottobre 2026): niente esercizi che la richiedono.
 
-## Schermate (barra in alto: Programmi · Mese · Storico · Elastici · Regole · Editor; nascosta durante la seduta)
+## Schermate (barra in basso: Programmi · Mese · Storico · Editor · Altro; nascosta durante la seduta)
+
+La barra sta in fondo allo schermo, come nelle app iOS, sopra l'area del gesto Home. **Altro** raccoglie Elastici e Regole, che hanno “‹ Altro” in alto per tornare. Se un recupero resta attivo uscendo dalla seduta, il timer compare sopra la barra.
 
 ### Programmi
 - Elenco delle routine. Per ognuna: nome, descrizione, numero di esercizi e di serie, quando è stata fatta l'ultima volta.
@@ -30,7 +32,7 @@ Riepilogo della chat in cui è nata la scheda (ottobre 2026). Il codice in `inde
 - **Spunta ✓**: avvia il recupero (nei superset “senza pausa” fino a fine giro). Se kg o valore sono vuoti salva quelli dell'ultima volta (o il minimo dell'obiettivo); i kg non si salvano se arrivano dagli elastici scelti.
 - **Serie in corso**: la prima non fatta nell'ordine della seduta (nei superset e nei circuiti alterna gli esercizi, come la guidata) ha il bordo viola e il numero pieno; il suo esercizio mostra “In corso”.
 - **Sforzo** (Facile, Giusta, Al limite): compare sotto la serie appena spuntata; toccando il numero di una serie fatta si riapre.
-- **Aggiungi serie / Rimuovi**: serie in più o in meno solo per questa seduta (`xs`). “Rimuovi” toglie l'ultima serie se non è spuntata e non scende sotto 1.
+- **Aggiungi serie / Rimuovi**: serie in più o in meno solo per questa seduta (`xs`). “Rimuovi” toglie l'ultima serie se non è spuntata e non scende sotto 1. Lo stesso si fa scorrendo l'ultima serie verso sinistra (compare “Elimina” in rosso): oltre metà riga o con uno scatto si elimina, altrimenti torna al suo posto. Le altre righe non si scorrono, perché i dati delle serie sono indicizzati per numero di serie.
 - **Scheda dettagli**: tua foto (con Rimuovi), disegno di wger se c'è (con autore e licenza), figure “Come si fa a casa”, oggetti e ancoraggio, nota, istruzioni, ultima volta con Copia, Video, Link, Aggiungi/Cambia foto.
 
 ### Figure e immagini
@@ -69,10 +71,10 @@ Calendario del mese con i giorni di allenamento (abbreviazione della routine) e 
   - Importa: unisce le sedute e ripristina programmi, esercizi personalizzati e alternative;
   - salvataggio dei file con condivisione iOS o download.
 
-### Elastici
+### Elastici (in Altro)
 Catalogo con nome, colore (tocco sul cerchio per cambiarlo) e kg. Si elimina con doppio tocco.
 
-### Regole
+### Regole (in Altro)
 Impostazione del suono a fine recupero (tre bip con Web Audio, tasto Prova) e schede di regole (progressione, intensità, alternative, Dropbox…).
 
 ### Editor
@@ -124,6 +126,13 @@ Impostazione del suono a fine recupero (tre bip con Web Audio, tasto Prova) e sc
 - **Serie in più o in meno della seduta**: `xs[`${programma}-${esercizio}`] = n` (anche negativo); il numero di serie è `nEff()` = pianificate + `xs`, almeno 1. Si azzera con la seduta (`clearTab`).
 - **Stato solo in memoria** (non salvato): `sheet`, `effOpen`, `noteOpen`, `mnDel`, `rsDel`, `ask`.
 
+## Avvio e app installata
+- Icona sulla Home (`apple-touch-icon.png`), `manifest.webmanifest` con nome, colori e icone, meta per la modalità a tutto schermo.
+- **Avvio senza lampi bianchi**: immagine di avvio di iOS (`img/avvio/`, una per misura di iPhone), poi la schermata di caricamento di `index.html`, poi la figura `#avvio` del template finché la scheda non è disegnata. Sono tutte uguali: fondo scuro e la stessa figura di 120 punti al centro, quindi il passaggio non si vede. Prima di ottobre 2026 il caricamento aveva fondo chiaro, la scritta "Unpacking…" e, per un istante, il markup grezzo del template.
+- **Movimento**: le schede in basso entrano scivolando e si chiudono con la X, toccando fuori o trascinando in giù la parte alta (poco e piano tornano su); i pulsanti si attenuano mentre il dito è giù; righe delle serie, sforzo, timer e “Vai!” compaiono con transizioni brevi. Con “Riduci movimento” attivo in iOS non ci sono animazioni.
+- **Tocco**: niente zoom con il doppio tocco (anche sulle conferme “tocca di nuovo”), niente selezione del testo né menu con la pressione lunga (tranne campi e link), niente rimbalzo della pagina, la pagina sotto una scheda non scorre. Il blocco del rimbalzo (`overscroll-behavior` sulla pagina) dipende dalla versione di iOS e non è stato provato su un iPhone.
+- **Non verificato su iPhone**: in Chromium l'avvio è stato controllato fotogramma per fotogramma, ma il comportamento delle immagini di avvio dipende da iOS. Per vederle potrebbe servire togliere l'icona dalla Home e aggiungerla di nuovo. Le misure di iPhone 17 e Air sono state ricavate e non provate su un dispositivo.
+
 ## Senza rete
 - `sw.js` salva `index.html` e l'icona. Con la rete la pagina arriva sempre da GitHub Pages, così una nuova pubblicazione si vede subito; senza rete, o se la rete non risponde entro 4s, si apre l'ultima copia salvata.
 - I dati sono comunque nel browser: senza rete si allena e si salva tutto; Dropbox si sincronizza al ritorno della connessione.
@@ -163,9 +172,17 @@ Impostazione del suono a fine recupero (tre bip con Web Audio, tasto Prova) e sc
 5. Modalità guidata "una serie alla volta"; poi editor dei programmi, alternative modificabili, esportazione CSV.
 6. Versione ospitata su Claude con salvataggio su cloud: costruita e poi **eliminata su richiesta**. Non riproporla. Il codice residuo (`cloudInit`, `cloudFlush`, download tramite `window.claude`) è stato rimosso.
 7. Scelta finale: **GitHub Pages** (repository pubblico: il codice è leggibile, i dati no) più **Dropbox**.
+8. Ottobre 2026, verso una sensazione da app nativa. Pagina alleggerita da 2,98 a 0,70 MB: il font delle icone resta solo in woff2 (letto da Safari su iOS 10 e successivi) e contiene solo le icone usate (`tools/bundle.py` lo rigenera). Con la CPU rallentata 4× in Chromium e la pagina servita in locale, la scheda è pronta in circa 0,9s invece di 1,6s (mediana di 9 aperture; misura fatta sul computer, non su iPhone). In più si scaricano 2,3 MB in meno.
+9. Ridisegni più leggeri (misure con CPU rallentata 4× in Chromium, non su iPhone). Il profilo ha mostrato che il calcolo dei valori (`renderVals`) costa circa 1 ms: il tempo va nel runtime x-dc, in React e nel disegno. Per questo non è stato fatto il “ricalcolo del solo esercizio toccato”, proposto all'inizio: non avrebbe dato guadagni misurabili. Fatto invece:
+   - timer: testo e barra aggiornati senza ridisegnare la pagina, da ~175 a ~3 ms di script al secondo durante il recupero;
+   - spunta: classi CSS al posto degli stili inline ripetuti e `content-visibility` sulle card, da ~130 a ~87 ms di CPU per tocco.
+   
+   Le animazioni aggiunte dopo (punto 10) non cambiano il tempo di risposta al tocco (~58 ms per il ridisegno), ma aggiungono circa 50 ms di CPU distribuiti nei fotogrammi successivi.
+10. Sensazione da app, sempre ottobre 2026: tocco senza zoom né selezione, schede animate e trascinabili, stato premuto, barra delle sezioni in basso con Altro, eliminazione dell'ultima serie scorrendo. Provato in Chromium con mouse e tocchi simulati, non su iPhone.
 
 ## Limiti noti e lavoro possibile
 - **Già discusso ma non fatto**: calendario settimanale (programma per giorno), settimana di scarico, misure corporee e foto dei progressi, modalità "seduta breve".
+- **Ogni tocco ridisegna tutta la pagina**: è il modo in cui funziona il runtime x-dc. Per andare oltre servirebbe dividere la scheda in più componenti o cambiare runtime.
 - **Programmi e impostazioni** in conflitto tra dispositivi: vince l'ultima modifica, senza fusione campo per campo.
 - **Disegni wger** solo per 11 esercizi; senza rete si vedono solo quelli già aperti almeno una volta (il service worker li salva al primo uso).
 - **Foto** solo in locale, in IndexedDB (non in localStorage, che su Safari ha circa 5 MB per tutto il sito). Non vanno nel backup né su Dropbox.

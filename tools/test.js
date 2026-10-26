@@ -10,11 +10,12 @@ Richiede il pacchetto `playwright` con Chromium installato.
 */
 const { chromium } = require('playwright');
 const http = require('http'), fs = require('fs'), path = require('path'), assert = require('assert');
+const { execFileSync } = require('child_process');
 
 const ROOT = path.resolve(__dirname, '..');
 const BASE = '/Workout/';
 const KEY = 'scheda-elastici-v1', HKEY = 'scheda-storico-v1', PKEY = 'scheda-foto-v1', DKEY = 'scheda-dropbox-v1';
-const TYPES = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript', '.png': 'image/png', '.json': 'application/json' };
+const TYPES = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript', '.png': 'image/png', '.json': 'application/json', '.webmanifest': 'application/manifest+json' };
 // PNG 2×2 rossa, per le foto.
 const PNG = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAIAAAACCAIAAAD91JpzAAAAFklEQVR4nGN8EBXFwMDAxMDAwMDAAAAToAGYWBgs8AAAAABJRU5ErkJggg==', 'base64');
 
@@ -119,7 +120,10 @@ class Session {
     if (await close.count()) await close.click();
     const back = this.pg.getByRole('button', { name: 'Torna ai programmi' });
     if (await back.count()) await back.click();
-    await this.nav.locator('button', { hasText: name }).click();
+    // Elastici e Regole stanno nella sezione Altro.
+    const more = ['Elastici', 'Regole'].includes(name);
+    await this.nav.locator('button', { hasText: more ? 'Altro' : name }).click();
+    if (more) await this.pg.locator('button', { hasText: new RegExp('^\\s*' + name) }).click();
   }
   card(name) { return this.pg.getByRole('region', { name, exact: true }); }
   set(card, n) { return card.getByRole('button', { name: new RegExp('^Serie ' + n + '(:| fatta)') }); }
@@ -354,6 +358,93 @@ test('icona per la Home e titolo', async env => {
   await s.close();
 });
 
+test('avvio: manifest, immagini di avvio e caricamento scuro', async env => {
+  const { DEVICES, startupTag } = require('./immagini.js');
+  const s = await Session.open(env);
+  const get = async u => { const r = await s.ctx.request.get(new URL(u, s.url).href); assert.ok(r.ok(), u); return r; };
+  const pngSize = b => [b.readUInt32BE(16), b.readUInt32BE(20)];
+  const html = await (await get('')).text();
+  const outer = html.slice(0, html.indexOf('</head>'));
+  const tpl = JSON.parse(html.match(/<script type="__bundler\/template">\n(.*?)\n  <\/script>/s)[1]);
+  const inner = tpl.slice(0, tpl.indexOf('</head>'));
+  // Stessi tag nelle due <head>: il bootstrap sostituisce il documento.
+  for (const [name, head] of [['esterna', outer], ['template', inner]]) {
+    assert.ok(head.includes('<link rel="manifest" href="manifest.webmanifest">'), 'manifest nella head ' + name);
+    assert.ok(head.includes('viewport-fit=cover'), 'viewport-fit nella head ' + name);
+    assert.deepStrictEqual(head.match(/<link rel="apple-touch-startup-image"[^>]*>/g), DEVICES.map(startupTag), 'immagini di avvio nella head ' + name);
+  }
+  for (const d of DEVICES) {
+    const href = startupTag(d).match(/href="([^"]+)"/)[1];
+    assert.deepStrictEqual(pngSize(await (await get(href)).body()), [d[0] * d[2], d[1] * d[2]], href);
+  }
+  const man = await (await get('manifest.webmanifest')).json();
+  assert.strictEqual(new URL(man.start_url, s.url + 'manifest.webmanifest').href, s.url);
+  assert.strictEqual(man.display, 'standalone');
+  assert.strictEqual(man.background_color, '#161826');
+  for (const ic of man.icons) assert.strictEqual(pngSize(await (await get(ic.src)).body()).join('x'), ic.sizes, ic.src);
+
+  // Schermata di caricamento (prima che parta lo script): fondo scuro e figura di 120px al centro.
+  const ctx = await env.browser.newContext({ viewport: { width: 390, height: 844 }, javaScriptEnabled: false });
+  const pg = await ctx.newPage();
+  await pg.goto(s.url);
+  const look = await pg.evaluate(() => {
+    const r = document.querySelector('#__bundler_thumbnail svg').getBoundingClientRect();
+    return { bg: getComputedStyle(document.body).backgroundColor, svg: [r.x, r.y, r.width, r.height].map(Math.round),
+      stato: getComputedStyle(document.getElementById('__bundler_loading')).opacity };
+  });
+  assert.deepStrictEqual(look, { bg: 'rgb(22, 24, 38)', svg: [135, 362, 120, 120], stato: '0' });
+  await ctx.close();
+
+  // Dopo l'avvio la figura sparisce e il template grezzo non è mai visibile.
+  await s.load();
+  assert.strictEqual(await s.pg.locator('#avvio').isVisible(), false, 'figura di avvio nascosta');
+  assert.strictEqual(await s.pg.evaluate(() => getComputedStyle(document.body.appendChild(document.createElement('x-dc'))).display), 'none');
+  await s.close();
+});
+
+test('icone: solo quelle usate, tutte con il loro disegno', async env => {
+  // Regole CSS e font delle icone allineati al template (li rigenera bundle.py pack).
+  execFileSync('python3', [path.join(ROOT, 'tools', 'bundle.py'), 'check'], { stdio: 'pipe' });
+  const s = await Session.open(env);
+  await s.load();
+  const seen = {};
+  // Ogni icona visibile disegnata con "Phosphor, sans-serif" e con il solo sans-serif: se il glifo
+  // manca nel font i due disegni coincidono (lo fa il ripiego), se c'è sono diversi e non vuoti.
+  const look = async () => Object.assign(seen, await s.pg.evaluate(async () => {
+    await document.fonts.load('80px Phosphor');
+    const cv = document.createElement('canvas'); cv.width = cv.height = 100;
+    const cx = cv.getContext('2d', { willReadFrequently: true });
+    const draw = (font, ch) => {
+      cx.clearRect(0, 0, 100, 100); cx.font = font; cx.fillText(ch, 10, 80);
+      return cx.getImageData(0, 0, 100, 100).data.join();
+    };
+    const ok = ch => { const a = draw('80px Phosphor, sans-serif', ch); return a !== draw('80px sans-serif', ch) && /[1-9]/.test(a); };
+    const out = { _assente: ok('\uf8ff') };
+    for (const el of document.querySelectorAll('.ph')) {
+      const c = getComputedStyle(el, '::before').content;
+      out[[...el.classList].find(k => k.startsWith('ph-'))] = c !== 'none' && ok(c.slice(1, -1));
+    }
+    return out;
+  }));
+  for (const tab of ['Mese', 'Storico', 'Elastici', 'Regole', 'Editor', 'Programmi']) { await s.tab(tab); await look(); }
+  await s.openProg('Lunedì');
+  await look();
+  const c = s.card('Lat pulldown in ginocchio (ancoraggio alto)');
+  await c.getByRole('button', { name: 'Altre azioni' }).click();
+  await look();
+  await s.pg.getByRole('dialog').getByRole('button', { name: 'Chiudi' }).click();
+  await s.details(c);
+  await look();
+  await s.pg.getByRole('dialog').getByRole('button', { name: 'Chiudi' }).click();
+  await s.pg.getByRole('button', { name: 'Guidata' }).click();
+  await look();
+  assert.strictEqual(seen._assente, false, 'il controllo riconosce un glifo assente');
+  delete seen._assente;
+  assert.ok(Object.keys(seen).length >= 30, 'icone controllate: ' + Object.keys(seen).length);
+  assert.deepStrictEqual(Object.keys(seen).filter(k => !seen[k]), [], 'icone senza disegno');
+  await s.close();
+});
+
 test('uso offline con il service worker', async env => {
   const server = await env.serve();
   const s = await Session.open(env, { sw: true, server });
@@ -554,6 +645,192 @@ test('serie in corso e sforzo sotto l’ultima spuntata', async env => {
   await dip.getByText('In corso').waitFor();                     // superset: si alterna con il dip
   assert.strictEqual(await eff.count(), 0, 'lo sforzo si sposta sulla serie appena spuntata');
   await lat.getByRole('group', { name: 'Sforzo della serie' }).waitFor();
+  await s.close();
+});
+
+test('recupero: il timer scorre senza ridisegnare la pagina', async env => {
+  const s = await Session.open(env);
+  await s.load();
+  await s.openProg('Lunedì');
+  // Orologio fermo: il tempo avanza solo con runFor.
+  await s.pg.clock.install();
+  await s.pg.clock.pauseAt(await s.pg.evaluate(() => Date.now()) + 1000);
+  await s.pg.getByRole('button', { name: 'Avvia il recupero' }).click();
+  const text = s.pg.locator('#tm-text'), bar = s.pg.locator('#tm-bar');
+  const secs = async () => { const [m, x] = (await text.innerText()).split(':'); return +m * 60 + +x; };
+  const width = () => bar.evaluate(e => parseFloat(e.style.width));
+  await text.waitFor();
+  const t0 = await secs(), w0 = await width();
+  assert.ok(t0 >= 30, 'recupero di ' + t0 + 's');
+  // Elementi creati da React mentre il recupero scorre: nessuno, cambiano solo testo e barra.
+  await s.pg.evaluate(() => { const R = window.React, f = R.createElement; window.__ce = 0; R.createElement = function () { window.__ce++; return f.apply(this, arguments); }; });
+  await s.pg.clock.runFor(3000);
+  assert.strictEqual(await secs(), t0 - 3);
+  assert.ok(await width() < w0, 'la barra scorre');
+  assert.strictEqual(await s.pg.evaluate(() => window.__ce), 0, 'nessun ridisegno della pagina');
+  await s.pg.getByRole('button', { name: '+15s' }).click();
+  assert.strictEqual(await secs(), t0 + 12);
+  await s.pg.clock.runFor(2000);
+  assert.strictEqual(await secs(), t0 + 10);
+  await s.pg.clock.runFor((t0 + 10) * 1000);
+  await text.getByText('Vai!').waitFor();
+  await s.pg.clock.runFor(7000);
+  await text.waitFor({ state: 'detached' });
+  await s.close();
+});
+
+test('seduta leggera da ridisegnare: card fuori schermo e righe delle serie', async env => {
+  const s = await Session.open(env);
+  await s.load();
+  await s.openProg('Lunedì');
+  const info = await s.pg.evaluate(() => {
+    const cards = [...document.querySelectorAll('section[aria-label]')].filter(e => e.querySelector('button[aria-label^="Serie "]'));
+    const rows = [...document.querySelectorAll('.set-row')];
+    // Negli stili inline delle righe restano solo le proprietà che cambiano da serie a serie.
+    const props = new Set(rows.flatMap(r => [r, ...r.querySelectorAll('[style]')].flatMap(e => [...e.style])));
+    const last = cards[cards.length - 1];
+    return { cards: cards.length, cv: cards.every(c => getComputedStyle(c).contentVisibility === 'auto'),
+      rows: rows.length, props: [...props].sort(), lastDrawn: last.querySelector('.set-row').checkVisibility({ contentVisibilityAuto: true }), lastName: last.getAttribute('aria-label') };
+  });
+  assert.ok(info.cards >= 10 && info.cv, 'content-visibility sulle card: ' + JSON.stringify(info));
+  assert.ok(info.rows >= 30);
+  assert.deepStrictEqual(info.props.filter(p => !/^(grid-template-columns|background(-[a-z]+)*|box-shadow|color|font-weight|border(-[a-z]+)*)$/.test(p)), [], 'stili statici inline nelle righe');
+  assert.strictEqual(info.lastDrawn, false, 'l’ultima card, fuori schermo, non si disegna');
+  const last = s.card(info.lastName);
+  await last.scrollIntoViewIfNeeded();
+  await s.until(() => last.evaluate(e => e.querySelector('.set-row').checkVisibility({ contentVisibilityAuto: true })), 'si disegna quando arriva sullo schermo');
+  await s.set(last, 1).waitFor();
+  await s.close();
+});
+
+test('tocco da app: niente zoom, selezione e rimbalzo', async env => {
+  const s = await Session.open(env);
+  await s.load();
+  await s.openProg('Lunedì');
+  const c = s.card('Lat pulldown in ginocchio (ancoraggio alto)');
+  await c.getByRole('button', { name: 'Altre azioni' }).click();
+  const st = await s.pg.evaluate(() => {
+    const cs = e => getComputedStyle(e), d = document.querySelector('[role=dialog]');
+    return { html: cs(document.documentElement).overscrollBehaviorY, sel: cs(document.body).userSelect,
+      btn: cs(d.querySelector('button')).touchAction, dialog: cs(d).overscrollBehaviorY, input: cs(document.querySelector('input')).userSelect };
+  });
+  assert.deepStrictEqual(st, { html: 'none', sel: 'none', btn: 'manipulation', dialog: 'contain', input: 'text' });
+  // -webkit-touch-callout esiste solo in Safari: si controlla nel sorgente.
+  assert.match(await (await s.ctx.request.get(s.url)).text(), /body\{-webkit-user-select:none;user-select:none;-webkit-touch-callout:none\}/);
+  await s.pg.getByRole('dialog').getByRole('button', { name: 'Chiudi' }).click();
+  // I campi restano scrivibili con la tastiera.
+  const kg = c.getByRole('textbox', { name: 'Kg serie 1' });
+  await kg.click();
+  await s.pg.keyboard.type('12,5');
+  assert.strictEqual(await kg.inputValue(), '12,5');
+  await s.close();
+});
+
+test('schede animate e trascinabili, stato premuto', async env => {
+  const s = await Session.open(env);
+  await s.load();
+  await s.openProg('Lunedì');
+  const c = s.card('Lat pulldown in ginocchio (ancoraggio alto)');
+  const dlg = s.pg.getByRole('dialog');
+  const anims = () => dlg.evaluate(d => d.getAnimations().map(a => a.animationName));
+  // Entra dal basso; la X la fa scivolare giù e poi la chiude.
+  await s.details(c);
+  assert.deepStrictEqual(await anims(), ['sheet-in']);
+  await dlg.getByRole('button', { name: 'Chiudi' }).click();
+  assert.ok(await s.pg.locator('.sheet-wrap.sheet-out').count(), 'esce con l’animazione');
+  await dlg.waitFor({ state: 'detached' });
+
+  const drag = async dy => {
+    const b = await s.pg.locator('.sheet-grab').boundingBox(), x = b.x + 60, y = b.y + 12;
+    await s.pg.mouse.move(x, y); await s.pg.mouse.down();
+    for (let i = 1; i <= 8; i++) { await s.pg.mouse.move(x, y + dy * i / 8); await s.pg.waitForTimeout(30); }
+    await s.pg.mouse.up();
+  };
+  await c.getByRole('button', { name: 'Altre azioni' }).click();
+  await s.pg.waitForTimeout(350);
+  await drag(40);   // poco e piano: torna al suo posto
+  assert.strictEqual(await dlg.count(), 1);
+  assert.strictEqual(await dlg.evaluate(d => d.style.transform), '');
+  await drag(260);  // abbastanza: si chiude
+  await dlg.waitFor({ state: 'detached' });
+
+  // Stato premuto: il pulsante si attenua finché il dito è giù.
+  const btn = c.getByRole('button', { name: 'Altre azioni' }), b = await btn.boundingBox();
+  await s.pg.mouse.move(b.x + b.width / 2, b.y + b.height / 2); await s.pg.mouse.down();
+  assert.strictEqual(await btn.evaluate(e => getComputedStyle(e).opacity), '0.55');
+  await s.pg.mouse.up();
+  await dlg.waitFor();
+  await dlg.getByRole('button', { name: 'Chiudi' }).click();
+  await dlg.waitFor({ state: 'detached' });
+
+  // “Riduci movimento”: niente animazioni, la scheda si chiude subito.
+  await s.pg.emulateMedia({ reducedMotion: 'reduce' });
+  await s.details(c);
+  assert.deepStrictEqual(await anims(), []);
+  await dlg.getByRole('button', { name: 'Chiudi' }).click();
+  assert.strictEqual(await dlg.count(), 0);
+  await s.close();
+});
+
+test('barra delle sezioni in basso con Altro', async env => {
+  const s = await Session.open(env);
+  await s.load();
+  const box = await s.nav.boundingBox();
+  assert.strictEqual(Math.round(box.y + box.height), 844, 'attaccata al fondo');
+  const items = s.nav.getByRole('button');
+  assert.deepStrictEqual((await items.allInnerTexts()).map(x => x.trim()), ['Programmi', 'Mese', 'Storico', 'Editor', 'Altro']);
+  const current = () => s.nav.locator('[aria-current="page"]').innerText();
+  assert.strictEqual(await current(), 'Programmi');
+  await s.tab('Altro');
+  await s.pg.locator('button', { hasText: 'Regole' }).waitFor();
+  await s.tab('Elastici');
+  await s.pg.getByText('Aggiungi elastico').waitFor();
+  assert.strictEqual(await current(), 'Altro', 'Elastici sta in Altro');
+  await s.pg.locator('button', { hasText: /^\s*Altro\s*$/ }).first().click();   // freccia in alto
+  await s.pg.getByRole('heading', { name: 'Altro' }).waitFor();
+  await s.load();
+  await s.pg.getByRole('heading', { name: 'Altro' }).waitFor();   // sezione ricordata
+  // Un recupero lasciato attivo uscendo dalla seduta resta sopra la barra.
+  await s.openProg('Lunedì');
+  await s.pg.getByRole('button', { name: 'Avvia il recupero' }).click();
+  await s.pg.getByRole('button', { name: 'Torna ai programmi' }).click();
+  const tm = await s.pg.locator('#tm-text').evaluate(async e => { const c = e.closest('.pop-up'); await Promise.all(c.getAnimations().map(a => a.finished)); return c.getBoundingClientRect().bottom; });
+  const nav = await s.nav.evaluate(e => e.getBoundingClientRect().top);
+  assert.ok(tm <= nav, `timer (${tm}) sopra la barra (${nav})`);
+  await s.close();
+});
+
+test('scorrere l’ultima serie a sinistra la elimina', async env => {
+  const s = await Session.open(env);
+  await s.load();
+  await s.openProg('Lunedì');
+  const c = s.card('Lat pulldown in ginocchio (ancoraggio alto)');
+  const rows = c.locator('.set-row');
+  await c.scrollIntoViewIfNeeded();
+  const swipe = async (row, dx) => {
+    const b = await row.boundingBox(), y = b.y + b.height / 2, x = b.x + b.width - 60;   // sul testo “Precedente”
+    await s.pg.mouse.move(x, y); await s.pg.mouse.down();
+    for (let i = 1; i <= 10; i++) { await s.pg.mouse.move(x + dx * i / 10, y); await s.pg.waitForTimeout(25); }
+    await s.pg.mouse.up();
+    await s.pg.waitForTimeout(450);
+  };
+  assert.strictEqual(await rows.count(), 4);
+  await c.getByRole('textbox', { name: 'Kg serie 4' }).fill('15');
+  await swipe(rows.nth(2), -300);                      // non è l’ultima: non succede nulla
+  assert.strictEqual(await rows.count(), 4);
+  await swipe(rows.nth(3), -60);                       // poco e piano: torna al suo posto
+  assert.strictEqual(await rows.count(), 4);
+  assert.strictEqual(await rows.nth(3).evaluate(e => e.style.transform + '|' + e.classList.contains('swiping')), '|false');
+  await swipe(rows.nth(3), -300);                      // abbastanza: si elimina, con i valori scritti
+  assert.strictEqual(await rows.count(), 3);
+  const st = await s.lsJson(KEY);
+  assert.strictEqual(st.xs['lun-latpd'], -1);
+  assert.ok(!st.sv['lun-latpd-3'], 'valori della serie eliminata tolti');
+  await s.set(c, 3).click();                           // spuntata: non si elimina più
+  await s.pg.getByRole('button', { name: 'Chiudi' }).first().click().catch(() => {});
+  await swipe(rows.nth(2), -300);
+  assert.strictEqual(await rows.count(), 3);
+  assert.strictEqual(await rows.nth(2).evaluate(e => e.style.transform), '');
   await s.close();
 });
 
