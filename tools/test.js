@@ -10,6 +10,7 @@ Richiede il pacchetto `playwright` con Chromium installato.
 */
 const { chromium } = require('playwright');
 const http = require('http'), fs = require('fs'), path = require('path'), assert = require('assert');
+const { execFileSync } = require('child_process');
 
 const ROOT = path.resolve(__dirname, '..');
 const BASE = '/Workout/';
@@ -351,6 +352,49 @@ test('icona per la Home e titolo', async env => {
     const im = new Image(); im.onload = () => res([im.naturalWidth, im.naturalHeight]); im.onerror = () => rej(new Error('icona non caricata')); im.src = l.href;
   }));
   assert.deepStrictEqual(size, [180, 180]);
+  await s.close();
+});
+
+test('icone: solo quelle usate, tutte con il loro disegno', async env => {
+  // Regole CSS e font delle icone allineati al template (li rigenera bundle.py pack).
+  execFileSync('python3', [path.join(ROOT, 'tools', 'bundle.py'), 'check'], { stdio: 'pipe' });
+  const s = await Session.open(env);
+  await s.load();
+  const seen = {};
+  // Ogni icona visibile disegnata con "Phosphor, sans-serif" e con il solo sans-serif: se il glifo
+  // manca nel font i due disegni coincidono (lo fa il ripiego), se c'è sono diversi e non vuoti.
+  const look = async () => Object.assign(seen, await s.pg.evaluate(async () => {
+    await document.fonts.load('80px Phosphor');
+    const cv = document.createElement('canvas'); cv.width = cv.height = 100;
+    const cx = cv.getContext('2d', { willReadFrequently: true });
+    const draw = (font, ch) => {
+      cx.clearRect(0, 0, 100, 100); cx.font = font; cx.fillText(ch, 10, 80);
+      return cx.getImageData(0, 0, 100, 100).data.join();
+    };
+    const ok = ch => { const a = draw('80px Phosphor, sans-serif', ch); return a !== draw('80px sans-serif', ch) && /[1-9]/.test(a); };
+    const out = { _assente: ok('\uf8ff') };
+    for (const el of document.querySelectorAll('.ph')) {
+      const c = getComputedStyle(el, '::before').content;
+      out[[...el.classList].find(k => k.startsWith('ph-'))] = c !== 'none' && ok(c.slice(1, -1));
+    }
+    return out;
+  }));
+  for (const tab of ['Mese', 'Storico', 'Elastici', 'Regole', 'Editor', 'Programmi']) { await s.tab(tab); await look(); }
+  await s.openProg('Lunedì');
+  await look();
+  const c = s.card('Lat pulldown in ginocchio (ancoraggio alto)');
+  await c.getByRole('button', { name: 'Altre azioni' }).click();
+  await look();
+  await s.pg.getByRole('dialog').getByRole('button', { name: 'Chiudi' }).click();
+  await s.details(c);
+  await look();
+  await s.pg.getByRole('dialog').getByRole('button', { name: 'Chiudi' }).click();
+  await s.pg.getByRole('button', { name: 'Guidata' }).click();
+  await look();
+  assert.strictEqual(seen._assente, false, 'il controllo riconosce un glifo assente');
+  delete seen._assente;
+  assert.ok(Object.keys(seen).length >= 30, 'icone controllate: ' + Object.keys(seen).length);
+  assert.deepStrictEqual(Object.keys(seen).filter(k => !seen[k]), [], 'icone senza disegno');
   await s.close();
 });
 

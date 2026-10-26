@@ -11,7 +11,7 @@ Dettagli completi (funzioni, modello dati, decisioni prese, limiti): @docs/PROGE
 
 ## Come è fatto index.html (importante)
 `index.html` è una "bundled page" esportata da Claude Design. Non modificarlo a mano.
-- `<script type="__bundler/manifest">`: risorse (runtime x-dc, React 18, ReactDOM, font Inter e Phosphor) in base64, alcune gzip.
+- `<script type="__bundler/manifest">`: risorse (runtime x-dc, React 18, ReactDOM, font Inter e Phosphor) in base64, alcune gzip, indicizzate per UUID. Il bootstrap sostituisce ogni UUID del template con un blob URL (i font con un data URL): tutto il manifest viene decodificato a ogni avvio, quindi ogni KB in più rallenta l'apertura.
 - `<script type="__bundler/template">`: **stringa JSON** con l'HTML interno. È qui che vive tutto il codice dell'app.
 - Il bootstrap del bundle crea blob URL per le risorse e imposta `window.__resources`. Il runtime x-dc compila la logica con `new Function`.
 - Eccezione: la `<head>` esterna contiene `<title>Allenamento</title>` e il link ad `apple-touch-icon.png`, aggiunti a mano (`pack` non li tocca). Gli stessi due tag sono anche nella `<head>` del template, perché il bootstrap sostituisce l'intero documento.
@@ -19,9 +19,11 @@ Dettagli completi (funzioni, modello dati, decisioni prese, limiti): @docs/PROGE
 Flusso di modifica, sempre:
 1. `python tools/bundle.py extract` → crea `build/template.html` (cartella ignorata da git).
 2. Modifica `build/template.html`.
-3. `python tools/bundle.py pack` → riscrive `index.html`.
-4. `python tools/bundle.py check` → verifica che la codifica sia identica (json.dumps con `ensure_ascii=False` e `</` → `<\u002F`).
+3. `python tools/bundle.py pack` → riscrive `index.html`, aggiorna le icone (sotto) e toglie dal manifest le risorse che il template non nomina più.
+4. `python tools/bundle.py check` → verifica che la codifica sia identica (json.dumps con `ensure_ascii=False` e `</` → `<\u002F`), che ogni UUID usato sia nel manifest e viceversa, e che le icone siano allineate.
 5. Testa, poi commit e push su `main` (GitHub Pages pubblica da `main`, cartella root).
+
+Icone Phosphor (`<i class="ph ph-nome">`): il template contiene solo le regole CSS e i glifi delle icone usate, non le 1530 del pacchetto. Per usarne una nuova basta scriverne la classe con il nome intero (`ph-nome`, mai composto nel codice) e lanciare `pack`, che rigenera regole e font da `tools/phosphor/` (font completo, codici, licenza MIT). Solo in quel caso servono fontTools e brotli: `pip install fonttools brotli`. I nomi sono quelli di phosphoricons.com (peso Regular).
 
 ## Struttura del template
 - `<helmet>`: meta, CSS token e font.
@@ -61,7 +63,7 @@ Flusso di modifica, sempre:
   - le sedute eliminate finiscono in `tomb`, altrimenti risorgono da un altro dispositivo.
 
 ## Test
-`node tools/test.js` esegue tutti i test; `node tools/test.js foto dropbox` solo quelli con queste parole nel nome. Serve il pacchetto `playwright` con Chromium.
+`node tools/test.js` esegue tutti i test; `node tools/test.js foto dropbox` solo quelli con queste parole nel nome. Serve il pacchetto `playwright` con Chromium, più `python3` (il test delle icone lancia `bundle.py check`).
 - Serve la cartella su `http://localhost:<porta>/Workout/`, come GitHub Pages, con viewport 390×844.
 - Simula gli endpoint Dropbox:
   - `api.dropboxapi.com/oauth2/token`;

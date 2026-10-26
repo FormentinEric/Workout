@@ -163,6 +163,7 @@ Impostazione del suono a fine recupero (tre bip con Web Audio, tasto Prova) e sc
 5. Modalità guidata "una serie alla volta"; poi editor dei programmi, alternative modificabili, esportazione CSV.
 6. Versione ospitata su Claude con salvataggio su cloud: costruita e poi **eliminata su richiesta**. Non riproporla. Il codice residuo (`cloudInit`, `cloudFlush`, download tramite `window.claude`) è stato rimosso.
 7. Scelta finale: **GitHub Pages** (repository pubblico: il codice è leggibile, i dati no) più **Dropbox**.
+8. Ottobre 2026, verso una sensazione da app nativa. Pagina alleggerita da 2,98 a 0,70 MB: il font delle icone resta solo in woff2 (letto da Safari su iOS 10 e successivi) e contiene solo le icone usate (`tools/bundle.py` lo rigenera). Con la CPU rallentata 4× in Chromium e la pagina servita in locale, la scheda è pronta in circa 0,9s invece di 1,6s (mediana di 9 aperture; misura fatta sul computer, non su iPhone). In più si scaricano 2,3 MB in meno.
 
 ## Limiti noti e lavoro possibile
 - **Già discusso ma non fatto**: calendario settimanale (programma per giorno), settimana di scarico, misure corporee e foto dei progressi, modalità "seduta breve".
