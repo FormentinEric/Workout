@@ -79,14 +79,14 @@ Impostazione del suono a fine recupero (tre bip con Web Audio, tasto Prova) e sc
 - Elenco dei programmi con Modifica, Duplica ed Elimina; tasto Nuovo programma.
 - **Programma**: nome, descrizione, "Conta nel riepilogo settimanale", Apri, Ripristina la versione originale (solo `lun`, `mer`, `ven`, `sab`).
 - **Blocchi**: titolo, tipo (Singolo, Superset o Circuito), giri, recupero (passi di 15s), spostamento su/giù, eliminazione.
-- **Esercizi**:
+- **Esercizi**: ogni riga ha la miniatura dell'esercizio (`thumbOf()`, la stessa della seduta);
   - nome visualizzato, numero di serie;
   - obiettivo: Ripetizioni (min–max), Max, Tempo (passi di 5s) o Metri;
   - lato (per gamba, per braccio, per lato), kg di partenza, nota;
   - **Alternative**: aggiungi o rimuovi; per ognuna, serie e obiettivo dell'esercizio di partenza oppure propri (serie, ripetizioni, max, tempo o metri, lato). Nei superset e nei circuiti le serie seguono comunque i giri;
   - **Figura** (solo esercizi personalizzati): generica oppure presa da un esercizio esistente, scelta con la ricerca esercizi;
   - spostamento anche tra blocchi, Cambia esercizio, Elimina.
-- **Ricerca esercizi**: testo e filtro per gruppo; quelli già presenti nel programma sono disattivati. Si possono creare esercizi personalizzati (nome, gruppo, misura in ripetizioni/tempo/metri, attrezzo: elastico, pesi o corpo libero). Hanno una figura generica in piedi, con elastico o peso secondo l'attrezzo, finché non se ne sceglie una.
+- **Ricerca esercizi**: testo e filtro per gruppo, ogni esercizio con la sua miniatura (la tua foto se c'è, altrimenti la figura); quelli già presenti nel programma sono disattivati. Si possono creare esercizi personalizzati (nome, gruppo, misura in ripetizioni/tempo/metri, attrezzo: elastico, pesi o corpo libero). Hanno una figura generica in piedi, con elastico o peso secondo l'attrezzo, finché non se ne sceglie una.
 - Le modifiche si salvano da sole.
 
 ## Logiche principali

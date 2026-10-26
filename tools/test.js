@@ -492,6 +492,23 @@ test('figura degli esercizi personalizzati', async env => {
   await s.close();
 });
 
+test('miniature nell’editor e nella ricerca esercizi', async env => {
+  const foto = 'data:image/png;base64,' + PNG.toString('base64');
+  const s = await Session.open(env, { seed: { [PKEY]: { latpd: foto } } });
+  await s.load();
+  await editProg(s, 'Lunedì');
+  const bg = loc => loc.evaluate(e => getComputedStyle(e).backgroundImage);
+  const row = name => s.pg.getByRole('button', { name: new RegExp('^' + name) }).first().locator('span[aria-hidden="true"]').first();
+  await s.until(async () => /data:image\/png/.test(await bg(row('Lat pulldown in ginocchio'))), 'la foto dell’utente come miniatura');
+  assert.match(await bg(row('Dip tra due sedie')), /data:image\/svg\+xml/, 'senza foto: la figura');
+  await s.pg.getByRole('button', { name: 'Aggiungi esercizio' }).first().click();
+  await s.pg.getByPlaceholder('Cerca un esercizio').waitFor();
+  const thumbs = await s.pg.locator('button:has(> span[aria-hidden="true"])').evaluateAll(els => els.map(e => getComputedStyle(e.firstElementChild).backgroundImage));
+  assert.ok(thumbs.length >= 55, 'una riga per esercizio: ' + thumbs.length);
+  assert.ok(thumbs.every(b => /^url\("data:image\/(svg\+xml|png)/.test(b)), 'ogni esercizio della ricerca ha la miniatura');
+  await s.close();
+});
+
 test('aggiungi e rimuovi serie', async env => {
   const s = await Session.open(env);
   await s.load();
