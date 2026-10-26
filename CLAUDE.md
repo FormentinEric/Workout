@@ -48,6 +48,7 @@ Icone Phosphor (`<i class="ph ph-nome">`): il template contiene solo le regole C
   - il timer non ridisegna: `tick()` scrive direttamente in `#tm-text .sc-interp` (lo span che il runtime crea per `{{ timerText }}`) e in `#tm-bar`; valori da `tmShow()`, gli stessi di `timerVals()`;
   - negli elementi ripetuti della seduta (`.wk-ex`, `.set-*`) gli stili fissi stanno nelle classi; inline restano solo i binding;
   - le card degli esercizi (`.wk-ex`) hanno `content-visibility:auto`: quelle fuori schermo non si disegnano.
+- **Animazioni**: classi in fondo allo stile globale della `<helmet>` (`.sheet*`, `.pop-up`, `.fade-in`, stato premuto `button:active`), tutte spente con `prefers-reduced-motion`. Le schede in basso (`.sheet-wrap`) si chiudono passando da `shDismiss(close)`, che le fa scivolare giù e dopo 200ms chiama `close`; il trascinamento della parte alta (`.sheet-grab`) è in `shDrag()`. Un'azione dentro una scheda che la chiude (es. scegliere una variante) può chiuderla subito.
 
 ## Invarianti da non rompere
 - Chiavi localStorage:

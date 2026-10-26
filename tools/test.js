@@ -723,6 +723,52 @@ test('tocco da app: niente zoom, selezione e rimbalzo', async env => {
   await s.close();
 });
 
+test('schede animate e trascinabili, stato premuto', async env => {
+  const s = await Session.open(env);
+  await s.load();
+  await s.openProg('Lunedì');
+  const c = s.card('Lat pulldown in ginocchio (ancoraggio alto)');
+  const dlg = s.pg.getByRole('dialog');
+  const anims = () => dlg.evaluate(d => d.getAnimations().map(a => a.animationName));
+  // Entra dal basso; la X la fa scivolare giù e poi la chiude.
+  await s.details(c);
+  assert.deepStrictEqual(await anims(), ['sheet-in']);
+  await dlg.getByRole('button', { name: 'Chiudi' }).click();
+  assert.ok(await s.pg.locator('.sheet-wrap.sheet-out').count(), 'esce con l’animazione');
+  await dlg.waitFor({ state: 'detached' });
+
+  const drag = async dy => {
+    const b = await s.pg.locator('.sheet-grab').boundingBox(), x = b.x + 60, y = b.y + 12;
+    await s.pg.mouse.move(x, y); await s.pg.mouse.down();
+    for (let i = 1; i <= 8; i++) { await s.pg.mouse.move(x, y + dy * i / 8); await s.pg.waitForTimeout(30); }
+    await s.pg.mouse.up();
+  };
+  await c.getByRole('button', { name: 'Altre azioni' }).click();
+  await s.pg.waitForTimeout(350);
+  await drag(40);   // poco e piano: torna al suo posto
+  assert.strictEqual(await dlg.count(), 1);
+  assert.strictEqual(await dlg.evaluate(d => d.style.transform), '');
+  await drag(260);  // abbastanza: si chiude
+  await dlg.waitFor({ state: 'detached' });
+
+  // Stato premuto: il pulsante si attenua finché il dito è giù.
+  const btn = c.getByRole('button', { name: 'Altre azioni' }), b = await btn.boundingBox();
+  await s.pg.mouse.move(b.x + b.width / 2, b.y + b.height / 2); await s.pg.mouse.down();
+  assert.strictEqual(await btn.evaluate(e => getComputedStyle(e).opacity), '0.55');
+  await s.pg.mouse.up();
+  await dlg.waitFor();
+  await dlg.getByRole('button', { name: 'Chiudi' }).click();
+  await dlg.waitFor({ state: 'detached' });
+
+  // “Riduci movimento”: niente animazioni, la scheda si chiude subito.
+  await s.pg.emulateMedia({ reducedMotion: 'reduce' });
+  await s.details(c);
+  assert.deepStrictEqual(await anims(), []);
+  await dlg.getByRole('button', { name: 'Chiudi' }).click();
+  assert.strictEqual(await dlg.count(), 0);
+  await s.close();
+});
+
 test('scheda dettagli: disegno wger, crediti e menu', async env => {
   const prev = { ...OLD_SESSION, id: 'lun-2000', t: 2000, items: [{ slot: 'latpd', ex: 'latpd', name: 'Lat pulldown', met: 'r', log: '',
     sets: ['13', '12'].map((v, i) => ({ n: i + 1, kg: '18', v, ok: true, e: 'g', b: '' })) }] };
