@@ -109,15 +109,27 @@ class Session {
   }
   async load() {
     await this.pg.goto(this.url);
-    await this.nav.getByRole('button').first().waitFor({ timeout: 15000 });
+    // L’app riapre l’ultima sezione: la barra delle sezioni oppure una seduta in corso.
+    await this.pg.locator('nav[aria-label="Sezioni"] button, button[aria-label="Torna ai programmi"]').first().waitFor({ timeout: 15000 });
   }
   get nav() { return this.pg.getByRole('navigation', { name: 'Sezioni' }); }
-  tab(name) { return this.nav.locator('button', { hasText: name }).click(); }
-  card(name) { return this.pg.locator('article').filter({ has: this.pg.locator('h3', { hasText: new RegExp('^' + name + '$') }) }); }
+  // Durante la seduta la barra delle sezioni è nascosta: si torna ai programmi con la freccia in alto.
+  async tab(name) {
+    const close = this.pg.getByRole('dialog').getByRole('button', { name: 'Chiudi' });
+    if (await close.count()) await close.click();
+    const back = this.pg.getByRole('button', { name: 'Torna ai programmi' });
+    if (await back.count()) await back.click();
+    await this.nav.locator('button', { hasText: name }).click();
+  }
+  card(name) { return this.pg.getByRole('region', { name, exact: true }); }
+  set(card, n) { return card.getByRole('button', { name: new RegExp('^Serie ' + n + '(:| fatta)') }); }
+  async details(card) { await card.getByRole('button', { name: 'Dettagli dell’esercizio' }).click(); const d = this.pg.getByRole('dialog'); await d.waitFor(); return d; }
+  async variant(card, label) { await card.getByRole('button', { name: /^Esercizio eseguito/ }).click(); await this.pg.getByRole('dialog').getByRole('button', { name: label, exact: true }).click(); }
+  async finish() { await this.pg.getByRole('button', { name: 'Termina' }).click(); await this.pg.getByRole('button', { name: 'Salva nello storico' }).click(); }
   async openProg(name) {
     await this.tab('Programmi');
     await this.pg.locator('article').filter({ hasText: name }).getByRole('button', { name: /Inizia|Riprendi/ }).click();
-    await this.pg.getByRole('button', { name: 'Concludi seduta' }).waitFor();
+    await this.pg.getByRole('button', { name: 'Termina' }).waitFor();
   }
   ls(k) { return this.pg.evaluate(k => localStorage.getItem(k), k); }
   async lsJson(k) { const v = await this.ls(k); return v == null ? null : JSON.parse(v); }
@@ -162,9 +174,13 @@ test('avvio e navigazione', async env => {
     await s.pg.getByText(new RegExp(txt)).first().waitFor();
   }
   await s.openProg('Lunedì');
-  await s.pg.getByRole('button', { name: 'Una serie alla volta' }).click();
+  assert.strictEqual(await s.nav.count(), 0, 'barra delle sezioni nascosta durante la seduta');
+  await s.pg.getByRole('button', { name: 'Guidata' }).click();
   await s.pg.getByText('Salta serie').waitFor();
   await s.pg.getByRole('button', { name: 'Lista' }).click();
+  await s.card('Salto corda').waitFor();
+  await s.pg.getByRole('button', { name: 'Torna ai programmi' }).click();
+  await s.nav.waitFor();
   await s.close();
 });
 
@@ -172,11 +188,10 @@ test('seduta conclusa nello storico', async env => {
   const s = await Session.open(env);
   await s.load();
   await s.openProg('Lunedì');
-  const c = s.card('Lat pulldown in ginocchio \\(ancoraggio alto\\)');
-  await c.getByRole('button', { name: '1', exact: true }).click();
-  await c.getByRole('button', { name: '2', exact: true }).click();
-  await s.pg.getByRole('button', { name: 'Concludi seduta' }).click();
-  await s.pg.getByRole('button', { name: 'Salva e azzera' }).click();
+  const c = s.card('Lat pulldown in ginocchio (ancoraggio alto)');
+  await s.set(c, 1).click();
+  await s.set(c, 2).click();
+  await s.finish();
   const h = await s.until(async () => { const h = await s.lsJson(HKEY); return h && h.length && h; }, 'seduta nello storico');
   assert.strictEqual(h[0].day, 'lun');
   assert.deepStrictEqual(h[0].items.map(i => i.ex), ['latpd']);
@@ -190,15 +205,14 @@ test('spunta senza scrivere: salva i valori proposti', async env => {
   const s = await Session.open(env, { seed: { [HKEY]: [prev], [KEY]: { ver: 2, bands: [{ id: 'b1', name: 'Rosso', kg: '9', col: '#e05a5a' }], bandHint: false } } });
   await s.load();
   await s.openProg('Lunedì');
-  const lat = s.card('Lat pulldown in ginocchio \\(ancoraggio alto\\)');
+  const lat = s.card('Lat pulldown in ginocchio (ancoraggio alto)');
   await lat.getByPlaceholder('13').first().fill('15');            // valore scritto: non va sovrascritto
-  for (const n of ['1', '2', '3']) await lat.getByRole('button', { name: n, exact: true }).click();
+  for (const n of [1, 2, 3]) await s.set(lat, n).click();
   await lat.getByRole('button', { name: /Rosso/ }).click();        // con gli elastici i kg arrivano dalla combinazione
-  await lat.getByRole('button', { name: '4', exact: true }).click();
-  await s.card('Chest press \\(ancoraggio all’altezza del petto\\)').getByRole('button', { name: '1', exact: true }).click();
-  await s.card('Salto corda').getByRole('button', { name: '1', exact: true }).click();
-  await s.pg.getByRole('button', { name: 'Concludi seduta' }).click();
-  await s.pg.getByRole('button', { name: 'Salva e azzera' }).click();
+  await s.set(lat, 4).click();
+  await s.set(s.card('Chest press (ancoraggio all’altezza del petto)'), 1).click();
+  await s.set(s.card('Salto corda'), 1).click();
+  await s.finish();
   const h = await s.until(async () => { const h = await s.lsJson(HKEY); return h && h.length === 2 && h; }, 'seduta salvata');
   const by = Object.fromEntries(h[0].items.map(i => [i.ex, i.sets.map(z => [z.kg, z.v])]));
   assert.deepStrictEqual(by.latpd, [['18', '15'], ['18', '13'], ['18', '12'], ['9', '12']]);
@@ -221,7 +235,8 @@ test('dati vecchi: migrazione dello stato e delle foto', async env => {
   assert.strictEqual(ph.latpd, foto);
   await s.until(async () => (await s.ls(PKEY)) === null, 'foto tolte da localStorage');
   await s.openProg('Lunedì');
-  await s.card('Lat pulldown in ginocchio \\(ancoraggio alto\\)').getByRole('img', { name: 'La tua esecuzione' }).waitFor();
+  const d = await s.details(s.card('Lat pulldown in ginocchio (ancoraggio alto)'));
+  await d.getByRole('img', { name: 'La tua esecuzione' }).waitFor();
   await s.close();
 });
 
@@ -230,15 +245,19 @@ test('foto salvate in IndexedDB', async env => {
   await s.load();
   await s.openProg('Lunedì');
   const c = s.card('Salto corda');
-  await c.locator('input[type=file]').setInputFiles({ name: 'f.png', mimeType: 'image/png', buffer: PNG });
-  await c.getByRole('img', { name: 'La tua esecuzione' }).waitFor();
+  let d = await s.details(c);
+  await d.locator('input[type=file]').setInputFiles({ name: 'f.png', mimeType: 'image/png', buffer: PNG });
+  await d.getByRole('img', { name: 'La tua esecuzione' }).waitFor();
   const ph = await s.until(async () => { const p = await s.photos(); return p.corda && p; }, 'foto in IndexedDB');
   assert.match(ph.corda, /^data:image\/jpeg;base64,/);
   assert.strictEqual(await s.ls(PKEY), null);
   await s.load();
   await s.openProg('Lunedì');
-  await s.card('Salto corda').getByRole('img', { name: 'La tua esecuzione' }).waitFor();
-  await s.card('Salto corda').getByRole('button', { name: 'Rimuovi' }).click();
+  const thumb = s.card('Salto corda').getByRole('button', { name: 'Dettagli dell’esercizio' }).first();
+  assert.match(await thumb.getAttribute('style'), /data:image\/jpeg/, 'la foto diventa la miniatura');
+  d = await s.details(s.card('Salto corda'));
+  await d.getByRole('img', { name: 'La tua esecuzione' }).waitFor();
+  await d.getByRole('button', { name: 'Rimuovi foto' }).click();
   await s.until(async () => !(await s.photos()).corda, 'foto rimossa');
   await s.close();
 });
@@ -255,16 +274,16 @@ test('memoria piena: avviso una volta sola', async env => {
   await s.openProg('Lunedì');
   const c = s.card('Salto corda');
   await s.pg.evaluate(() => { window.__full = true; });
-  await c.getByRole('button', { name: '1', exact: true }).click();
+  await s.set(c, 1).click();
   await s.until(() => s.dialogs.length === 1, 'primo avviso');
   assert.match(s.dialogs[0], /Memoria del browser piena/);
-  await c.getByRole('button', { name: '1', exact: true }).click();
+  await s.set(c, 1).click();
   await s.pg.waitForTimeout(300);
   assert.strictEqual(s.dialogs.length, 1, 'l’avviso non si ripete finché la memoria resta piena');
   await s.pg.evaluate(() => { window.__full = false; });
-  await c.getByRole('button', { name: '1', exact: true }).click();
+  await s.set(c, 1).click();
   await s.pg.evaluate(() => { window.__full = true; });
-  await c.getByRole('button', { name: '1', exact: true }).click();
+  await s.set(c, 1).click();
   await s.until(() => s.dialogs.length === 2, 'nuovo avviso dopo un salvataggio riuscito');
   await s.close();
 });
@@ -274,7 +293,7 @@ test('dropbox: collegamento, invio, ripristino, conflitto ed eliminazioni', asyn
   const a = await Session.open(env, { dbx, seed: { [HKEY]: [OLD_SESSION] } });
   await a.load();
   await a.openProg('Lunedì');
-  await a.card('Salto corda').getByRole('button', { name: '1', exact: true }).click();
+  await a.set(a.card('Salto corda'), 1).click();
   await a.tab('Storico');
   await a.pg.getByPlaceholder('dalla pagina Settings della tua app Dropbox').fill('chiave-app');
   const link = a.pg.getByRole('link', { name: /Apri Dropbox/ });
@@ -293,7 +312,7 @@ test('dropbox: collegamento, invio, ripristino, conflitto ed eliminazioni', asyn
   const before = dbx.uploads;
   await a.tab('Programmi');
   await a.openProg('Lunedì');
-  await a.card('Lat pulldown in ginocchio \\(ancoraggio alto\\)').getByRole('button', { name: '1', exact: true }).click();
+  await a.set(a.card('Lat pulldown in ginocchio (ancoraggio alto)'), 1).click();
   await a.until(() => dbx.uploads > before && dbx.conflicts === 0, 'upload dopo il conflitto', 12000);
   assert.ok(JSON.parse(dbx.data().main).done['lun-latpd-0']);
 
@@ -390,21 +409,20 @@ test('alternativa con serie e obiettivo propri', async env => {
   assert.strictEqual(ualt[0].sr, '2 × 50s');
 
   await s.openProg('Lunedì');
-  await s.card('Chest press \\(ancoraggio all’altezza del petto\\)').getByRole('button', { name: 'Pike push-up', exact: true }).click();
+  await s.variant(s.card('Chest press (ancoraggio all’altezza del petto)'), 'Pike push-up');
   const c = s.card('Pike push-up');
-  await c.getByText('2 × 50s', { exact: true }).waitFor();
-  await c.getByRole('button', { name: /Avvia 0:50/ }).waitFor();
-  assert.strictEqual(await c.getByRole('button', { name: '3', exact: true }).count(), 0, 'solo 2 serie');
-  await c.getByRole('button', { name: '1', exact: true }).click();
-  await c.getByRole('button', { name: '2', exact: true }).click();
-  await s.pg.getByText(/^2 \/ \d+ serie$/).waitFor();
-  await s.pg.getByRole('button', { name: 'Concludi seduta' }).click();
-  await s.pg.getByRole('button', { name: 'Salva e azzera' }).click();
+  await c.getByText(/^2 × 50s/).waitFor();
+  assert.strictEqual(await c.getByRole('button', { name: 'Avvia il tempo' }).count(), 2, 'esercizio a tempo: un avvio per serie');
+  assert.strictEqual(await s.set(c, 3).count(), 0, 'solo 2 serie');
+  await s.set(c, 1).click();
+  await s.set(c, 2).click();
+  await s.pg.getByText('2 / 41', { exact: true }).waitFor();
+  await s.finish();
   const h = await s.until(async () => { const h = await s.lsJson(HKEY); return h && h.length && h; }, 'seduta salvata');
   assert.deepStrictEqual(h[0].items.map(i => [i.ex, i.met, i.sets.length]), [['pike', 't', 2]]);
   assert.strictEqual(h[0].tot, 41, 'totale serie con la variante da 2 serie al posto di 4');
   await s.openProg('Lunedì');
-  await s.pg.getByRole('button', { name: 'Una serie alla volta' }).click();
+  await s.pg.getByRole('button', { name: 'Guidata' }).click();
   await s.pg.getByText('1 di 41', { exact: true }).waitFor();
   await s.pg.getByRole('button', { name: 'Lista' }).click();
 
@@ -419,10 +437,10 @@ test('alternativa con serie e obiettivo propri', async env => {
   await fbox.getByRole('button', { name: 'Max', exact: true }).click();
   await fp.filter({ hasText: '3 × max' }).waitFor();
   await s.openProg('Lunedì');
-  await s.card('Face pull').getByRole('button', { name: 'Dietro la nuca', exact: true }).click();
+  await s.variant(s.card('Face pull'), 'Dietro la nuca');
   const t = s.card('Tirata dell’elastico dietro la nuca');
-  await t.getByText('3 × max', { exact: true }).waitFor();
-  assert.strictEqual(await t.getByRole('button', { name: '3', exact: true }).count(), 1);
+  await t.getByText(/^3 × max/).waitFor();
+  assert.strictEqual(await s.set(t, 3).count(), 1);
 
   // Ritorno all’originale: la variante eredita di nuovo serie e obiettivo.
   await editProg(s, 'Lunedì');
@@ -447,7 +465,8 @@ test('figura degli esercizi personalizzati', async env => {
 
   await s.openProg('Lunedì');
   const c = s.card('Affondo laterale');
-  await c.getByRole('img', { name: 'Figura generica' }).waitFor();
+  let d = await s.details(c);
+  await d.getByRole('img', { name: 'Figura generica' }).waitFor();
 
   await editProg(s, 'Lunedì');
   await s.pg.getByRole('button', { name: /^Affondo laterale/ }).click();
@@ -461,15 +480,95 @@ test('figura degli esercizi personalizzati', async env => {
   assert.strictEqual(cex.fig, 'squat');
 
   await s.openProg('Lunedì');
-  const imgs = c.locator('figure [role=img]');
-  await s.until(async () => (await imgs.count()) >= 2, 'figure dello squat');
-  assert.strictEqual(await c.getByRole('img', { name: 'Figura generica' }).count(), 0);
+  d = await s.details(c);
+  await s.until(async () => (await d.locator('figure [role=img]').count()) >= 2, 'figure dello squat');
+  assert.strictEqual(await d.getByRole('img', { name: 'Figura generica' }).count(), 0);
 
   await editProg(s, 'Lunedì');
   await s.pg.getByRole('button', { name: /^Affondo laterale/ }).click();
   await s.pg.getByRole('button', { name: 'Usa la generica' }).click();
   await s.pg.getByText('Generica', { exact: true }).waitFor();
   assert.strictEqual(Object.values((await s.lsJson(KEY)).cex)[0].fig, undefined);
+  await s.close();
+});
+
+test('aggiungi e rimuovi serie', async env => {
+  const s = await Session.open(env);
+  await s.load();
+  await s.openProg('Lunedì');
+  const c = s.card('Chest press (ancoraggio all’altezza del petto)');
+  await c.getByRole('button', { name: 'Aggiungi serie' }).click();
+  await s.set(c, 5).waitFor();
+  await s.pg.getByText('0 / 44', { exact: true }).waitFor();
+  await s.set(c, 5).click();                                      // fatta: “Rimuovi” non la toglie
+  await c.getByRole('button', { name: 'Rimuovi' }).click();
+  await s.pg.waitForTimeout(200);
+  assert.strictEqual(await s.set(c, 5).count(), 1);
+  await s.set(c, 5).click();                                      // annullata: ora si può togliere
+  await c.getByRole('button', { name: 'Rimuovi' }).click();
+  await s.until(async () => (await s.set(c, 5).count()) === 0, 'quinta serie tolta');
+  await c.getByRole('button', { name: 'Rimuovi' }).click();      // anche sotto le serie del programma
+  await s.until(async () => (await s.set(c, 4).count()) === 0, 'quarta serie tolta');
+  assert.deepStrictEqual((await s.lsJson(KEY)).xs, { 'lun-chest': -1 });
+  await c.getByRole('button', { name: 'Aggiungi serie' }).click();
+  await c.getByRole('button', { name: 'Aggiungi serie' }).click();
+  for (const n of [1, 2, 3, 4, 5]) await s.set(c, n).click();
+  await s.finish();
+  const h = await s.until(async () => { const h = await s.lsJson(HKEY); return h && h.length && h; }, 'seduta salvata');
+  assert.strictEqual(h[0].items.find(i => i.ex === 'chest').sets.length, 5);
+  assert.strictEqual(h[0].tot, 44);
+  assert.deepStrictEqual((await s.lsJson(KEY)).xs, {}, 'le serie in più valgono solo per la seduta');
+  await s.close();
+});
+
+test('serie in corso e sforzo sotto l’ultima spuntata', async env => {
+  const s = await Session.open(env);
+  await s.load();
+  await s.openProg('Lunedì');
+  const corda = s.card('Salto corda'), lat = s.card('Lat pulldown in ginocchio (ancoraggio alto)'), dip = s.card('Dip tra due sedie');
+  await corda.getByText('In corso').waitFor();
+  await s.set(corda, 1).click();
+  await lat.getByText('In corso').waitFor();
+  assert.strictEqual(await corda.getByText('In corso').count(), 0);
+  const eff = corda.getByRole('group', { name: 'Sforzo della serie' });
+  await eff.getByRole('button', { name: 'Al limite' }).click();
+  await s.until(async () => (await s.lsJson(KEY)).eff['lun-corda-0'] === 'l', 'sforzo salvato');
+  await s.set(lat, 1).click();
+  await dip.getByText('In corso').waitFor();                     // superset: si alterna con il dip
+  assert.strictEqual(await eff.count(), 0, 'lo sforzo si sposta sulla serie appena spuntata');
+  await lat.getByRole('group', { name: 'Sforzo della serie' }).waitFor();
+  await s.close();
+});
+
+test('scheda dettagli: disegno wger, crediti e menu', async env => {
+  const prev = { ...OLD_SESSION, id: 'lun-2000', t: 2000, items: [{ slot: 'latpd', ex: 'latpd', name: 'Lat pulldown', met: 'r', log: '',
+    sets: ['13', '12'].map((v, i) => ({ n: i + 1, kg: '18', v, ok: true, e: 'g', b: '' })) }] };
+  const s = await Session.open(env, { seed: { [HKEY]: [prev] } });
+  await s.load();
+  await s.openProg('Lunedì');
+  let d = await s.details(s.card('Dip tra due sedie'));
+  const img = d.getByRole('img', { name: 'Disegno dell’esercizio: Dip tra due sedie' });
+  const src = (await img.getAttribute('style')).match(/url\("([^"]+)"\)/)[1];
+  assert.strictEqual(src, 'img/wger/dip.jpg');
+  const size = await s.pg.evaluate(u => new Promise((res, rej) => { const im = new Image(); im.onload = () => res(im.naturalWidth); im.onerror = rej; im.src = u; }), src);
+  assert.ok(size > 0, 'disegno caricato');
+  assert.match(await d.getByRole('link', { name: 'wger.de' }).getAttribute('href'), /wger\.de\/en\/exercise\/197\//);
+  assert.match(await d.getByRole('link', { name: 'CC BY-SA 3.0' }).getAttribute('href'), /creativecommons\.org\/licenses\/by-sa\/3\.0/);
+  await d.getByText(/Disegno: Everkinetic/).waitFor();
+  await d.getByRole('button', { name: 'Chiudi' }).click();
+  d = await s.details(s.card('Salto corda'));
+  assert.strictEqual(await d.getByRole('link', { name: 'wger.de' }).count(), 0, 'senza disegno wger restano le figure');
+  assert.ok(await d.locator('figure [role=img]').count() >= 1);
+  await d.getByRole('button', { name: 'Chiudi' }).click();
+
+  const lat = s.card('Lat pulldown in ginocchio (ancoraggio alto)');
+  await lat.getByRole('button', { name: 'Altre azioni' }).click();
+  await s.pg.getByRole('dialog').getByRole('button', { name: 'Copia i valori dell’ultima volta' }).click();
+  await s.until(async () => { const v = (await s.lsJson(KEY)).sv; return v['lun-latpd-1'] && v['lun-latpd-1'].v === '12'; }, 'valori copiati');
+  await lat.getByRole('button', { name: 'Altre azioni' }).click();
+  await s.pg.getByRole('dialog').getByRole('button', { name: 'Azzera le serie di questo esercizio' }).click();
+  await s.pg.getByRole('dialog').getByRole('button', { name: 'Tocca di nuovo per azzerare' }).click();
+  await s.until(async () => !Object.keys((await s.lsJson(KEY)).sv).some(k => k.startsWith('lun-latpd-')), 'esercizio azzerato');
   await s.close();
 });
 
