@@ -22,7 +22,7 @@ Una card per esercizio con:
 - due figure (stick figure SVG generate da `LIB[*].poses`, braccio e gamba vicini e lontani, oggetti di scena: porta, ancoraggio, sedia, box, zaino, elastico);
 - istruzioni, muscoli, Video (ricerca YouTube o link personale), foto personale;
 - serie con kg e ripetizioni (o tempo, o metri);
-- spunta della serie, che avvia il recupero automatico; nei superset mostra "senza pausa" e il recupero parte solo a fine giro.
+- spunta della serie, che avvia il recupero automatico; nei superset mostra "senza pausa" e il recupero parte solo a fine giro. Se kg o valore sono vuoti, la spunta salva quelli dell'ultima volta (o il minimo dell'obiettivo), come la modalità guidata; i kg non si salvano se arrivano dagli elastici scelti.
 
 Inoltre:
 - **Esercizio eseguito**: scelta tra originale e alternative, con dati separati per variante.
