@@ -14,6 +14,7 @@ Dettagli completi (funzioni, modello dati, decisioni prese, limiti): @docs/PROGE
 - `<script type="__bundler/manifest">`: risorse (runtime x-dc, React 18, ReactDOM, font Inter e Phosphor) in base64, alcune gzip.
 - `<script type="__bundler/template">`: **stringa JSON** con l'HTML interno. È qui che vive tutto il codice dell'app.
 - Il bootstrap del bundle crea blob URL per le risorse e imposta `window.__resources`. Il runtime x-dc compila la logica con `new Function`.
+- Eccezione: la `<head>` esterna contiene `<title>Allenamento</title>` e il link ad `apple-touch-icon.png`, aggiunti a mano (`pack` non li tocca). Gli stessi due tag sono anche nella `<head>` del template, perché il bootstrap sostituisce l'intero documento.
 
 Flusso di modifica, sempre:
 1. `python tools/bundle.py extract` → crea `build/template.html` (cartella ignorata da git).
@@ -40,8 +41,9 @@ Flusso di modifica, sempre:
   - `scheda-elastici-v1`: stato principale (JSON);
   - `scheda-elastici-v1:t`: ora dell'ultima modifica *dei dati*;
   - `scheda-storico-v1`: storico;
-  - `scheda-foto-v1`: foto;
+  - `scheda-foto-v1`: foto, solo nelle versioni vecchie. All'avvio vengono spostate in IndexedDB e la chiave viene cancellata;
   - `scheda-dropbox-v1`: token Dropbox, verificatore PKCE, rev, tombstone. Non va mai esportato nei backup.
+- Foto: IndexedDB, database `scheda-foto`, archivio `foto`, chiave = ID dell'esercizio, valore = data URL JPEG. Se IndexedDB non è disponibile si torna a `scheda-foto-v1`.
 - Chiavi dei dati delle serie:
   - serie: `${programmaId}-${esercizioId}-${k}`;
   - dati di una variante: aggiungere `~${altId}`.
@@ -56,20 +58,23 @@ Flusso di modifica, sempre:
   - le sedute eliminate finiscono in `tomb`, altrimenti risorgono da un altro dispositivo.
 
 ## Test
-Usa Playwright (Chromium) a 390×844:
-- servi `index.html` intercettando `https://<utente>.github.io/scheda/` con `page.route`;
-- simula gli endpoint Dropbox:
+`node tools/test.js` esegue tutti i test; `node tools/test.js foto dropbox` solo quelli con queste parole nel nome. Serve il pacchetto `playwright` con Chromium.
+- Serve la cartella su `http://localhost:<porta>/Workout/`, come GitHub Pages, con viewport 390×844.
+- Simula gli endpoint Dropbox:
   - `api.dropboxapi.com/oauth2/token`;
   - `content.dropboxapi.com/2/files/download|upload`, con `rev` e 409 per i conflitti;
   - le intestazioni CORS, compresa l'esposizione di `dropbox-api-result`.
+- Fallisce se compaiono `pageerror` o errori in console. Fanno eccezione i 409 di Dropbox, previsti dal protocollo.
+- Per i dati vecchi usa l'opzione `seed` di `Session.open`: carica stati salvati nel formato precedente e controlla che vengano letti correttamente.
 
-Verifica che non ci siano `pageerror` né errori in console. Per i dati vecchi, carica stati salvati con il formato precedente e controlla che vengano letti correttamente.
+Ogni modifica va coperta da un test in `tools/test.js`.
 
 ## Pubblicazione
-- Repository GitHub pubblico, Pages: "Deploy from a branch" → `main` / root. URL: `https://<utente>.github.io/scheda/`.
+- Repository GitHub pubblico, Pages: "Deploy from a branch" → `main` / root. URL: `https://<utente>.github.io/Workout/` (il percorso è il nome del repository).
 - App Dropbox:
   - Scoped access, **App folder**;
   - permessi `files.content.read` e `files.content.write`;
   - nessun Redirect URI: la scheda usa PKCE e l'utente incolla il codice;
   - l'App key si inserisce nell'interfaccia (Storico → Sincronizzazione Dropbox), non nel codice.
 - File su Dropbox: `/scheda-allenamento.json` dentro la cartella dell'app.
+- `sw.js` (service worker, registrato da `swInit()`): rete prima di tutto; se la rete manca, dà errore o non risponde entro 4s, usa l'ultima copia di `index.html` e dell'icona. Tocca solo le GET dentro la cartella della scheda. Se cambi il formato della cache, cambia il nome `CACHE`: le copie vecchie vengono cancellate all'attivazione.
