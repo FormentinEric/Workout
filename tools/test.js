@@ -146,6 +146,10 @@ async function until(fn, what, ms = 8000) {
   }
 }
 
+// Seduta già nello storico, per i test che partono da dati salvati.
+const OLD_SESSION = { id: 'lun-1000', day: 'lun', pname: 'Lunedì', t: 1000, start: null, auto: false, dn: 1, tot: 43,
+  items: [{ slot: 'corda', ex: 'corda', name: 'Salto corda', met: 'r', sets: [{ n: 1, kg: '', v: '2', ok: true, e: '', b: '' }], log: '' }] };
+
 const TESTS = [];
 const test = (name, fn) => TESTS.push({ name, fn });
 
@@ -177,6 +181,29 @@ test('seduta conclusa nello storico', async env => {
   assert.strictEqual(h[0].day, 'lun');
   assert.deepStrictEqual(h[0].items.map(i => i.ex), ['latpd']);
   assert.strictEqual(h[0].items[0].sets.length, 2);
+  await s.close();
+});
+
+test('spunta senza scrivere: salva i valori proposti', async env => {
+  const prev = { ...OLD_SESSION, id: 'lun-2000', t: 2000, items: [{ slot: 'latpd', ex: 'latpd', name: 'Lat pulldown', met: 'r', log: '',
+    sets: ['13', '13', '12', '12'].map((v, i) => ({ n: i + 1, kg: '18', v, ok: true, e: 'g', b: '' })) }] };
+  const s = await Session.open(env, { seed: { [HKEY]: [prev], [KEY]: { ver: 2, bands: [{ id: 'b1', name: 'Rosso', kg: '9', col: '#e05a5a' }], bandHint: false } } });
+  await s.load();
+  await s.openProg('Lunedì');
+  const lat = s.card('Lat pulldown in ginocchio \\(ancoraggio alto\\)');
+  await lat.getByPlaceholder('13').first().fill('15');            // valore scritto: non va sovrascritto
+  for (const n of ['1', '2', '3']) await lat.getByRole('button', { name: n, exact: true }).click();
+  await lat.getByRole('button', { name: /Rosso/ }).click();        // con gli elastici i kg arrivano dalla combinazione
+  await lat.getByRole('button', { name: '4', exact: true }).click();
+  await s.card('Chest press \\(ancoraggio all’altezza del petto\\)').getByRole('button', { name: '1', exact: true }).click();
+  await s.card('Salto corda').getByRole('button', { name: '1', exact: true }).click();
+  await s.pg.getByRole('button', { name: 'Concludi seduta' }).click();
+  await s.pg.getByRole('button', { name: 'Salva e azzera' }).click();
+  const h = await s.until(async () => { const h = await s.lsJson(HKEY); return h && h.length === 2 && h; }, 'seduta salvata');
+  const by = Object.fromEntries(h[0].items.map(i => [i.ex, i.sets.map(z => [z.kg, z.v])]));
+  assert.deepStrictEqual(by.latpd, [['18', '15'], ['18', '13'], ['18', '12'], ['9', '12']]);
+  assert.deepStrictEqual(by.chest, [['', '12']], 'senza storico: minimo dell’obiettivo');
+  assert.deepStrictEqual(by.corda, [['', '2:00']], 'esercizio a tempo: tempo dell’obiettivo');
   await s.close();
 });
 
@@ -241,9 +268,6 @@ test('memoria piena: avviso una volta sola', async env => {
   await s.until(() => s.dialogs.length === 2, 'nuovo avviso dopo un salvataggio riuscito');
   await s.close();
 });
-
-const OLD_SESSION = { id: 'lun-1000', day: 'lun', pname: 'Lunedì', t: 1000, start: null, auto: false, dn: 1, tot: 43,
-  items: [{ slot: 'corda', ex: 'corda', name: 'Salto corda', met: 'r', sets: [{ n: 1, kg: '', v: '2', ok: true, e: '', b: '' }], log: '' }] };
 
 test('dropbox: collegamento, invio, ripristino, conflitto ed eliminazioni', async env => {
   const dbx = dropbox();
