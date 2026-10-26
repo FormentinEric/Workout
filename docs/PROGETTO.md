@@ -124,6 +124,11 @@ Impostazione del suono a fine recupero (tre bip con Web Audio, tasto Prova) e sc
 - **Serie in più o in meno della seduta**: `xs[`${programma}-${esercizio}`] = n` (anche negativo); il numero di serie è `nEff()` = pianificate + `xs`, almeno 1. Si azzera con la seduta (`clearTab`).
 - **Stato solo in memoria** (non salvato): `sheet`, `effOpen`, `noteOpen`, `mnDel`, `rsDel`, `ask`.
 
+## Avvio e app installata
+- Icona sulla Home (`apple-touch-icon.png`), `manifest.webmanifest` con nome, colori e icone, meta per la modalità a tutto schermo.
+- **Avvio senza lampi bianchi**: immagine di avvio di iOS (`img/avvio/`, una per misura di iPhone), poi la schermata di caricamento di `index.html`, poi la figura `#avvio` del template finché la scheda non è disegnata. Sono tutte uguali: fondo scuro e la stessa figura di 120 punti al centro, quindi il passaggio non si vede. Prima di ottobre 2026 il caricamento aveva fondo chiaro, la scritta "Unpacking…" e, per un istante, il markup grezzo del template.
+- **Non verificato su iPhone**: in Chromium l'avvio è stato controllato fotogramma per fotogramma, ma il comportamento delle immagini di avvio dipende da iOS. Per vederle potrebbe servire togliere l'icona dalla Home e aggiungerla di nuovo. Le misure di iPhone 17 e Air sono state ricavate e non provate su un dispositivo.
+
 ## Senza rete
 - `sw.js` salva `index.html` e l'icona. Con la rete la pagina arriva sempre da GitHub Pages, così una nuova pubblicazione si vede subito; senza rete, o se la rete non risponde entro 4s, si apre l'ultima copia salvata.
 - I dati sono comunque nel browser: senza rete si allena e si salva tutto; Dropbox si sincronizza al ritorno della connessione.

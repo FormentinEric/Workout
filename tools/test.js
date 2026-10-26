@@ -15,7 +15,7 @@ const { execFileSync } = require('child_process');
 const ROOT = path.resolve(__dirname, '..');
 const BASE = '/Workout/';
 const KEY = 'scheda-elastici-v1', HKEY = 'scheda-storico-v1', PKEY = 'scheda-foto-v1', DKEY = 'scheda-dropbox-v1';
-const TYPES = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript', '.png': 'image/png', '.json': 'application/json' };
+const TYPES = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript', '.png': 'image/png', '.json': 'application/json', '.webmanifest': 'application/manifest+json' };
 // PNG 2×2 rossa, per le foto.
 const PNG = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAIAAAACCAIAAAD91JpzAAAAFklEQVR4nGN8EBXFwMDAxMDAwMDAAAAToAGYWBgs8AAAAABJRU5ErkJggg==', 'base64');
 
@@ -352,6 +352,50 @@ test('icona per la Home e titolo', async env => {
     const im = new Image(); im.onload = () => res([im.naturalWidth, im.naturalHeight]); im.onerror = () => rej(new Error('icona non caricata')); im.src = l.href;
   }));
   assert.deepStrictEqual(size, [180, 180]);
+  await s.close();
+});
+
+test('avvio: manifest, immagini di avvio e caricamento scuro', async env => {
+  const { DEVICES, startupTag } = require('./immagini.js');
+  const s = await Session.open(env);
+  const get = async u => { const r = await s.ctx.request.get(new URL(u, s.url).href); assert.ok(r.ok(), u); return r; };
+  const pngSize = b => [b.readUInt32BE(16), b.readUInt32BE(20)];
+  const html = await (await get('')).text();
+  const outer = html.slice(0, html.indexOf('</head>'));
+  const tpl = JSON.parse(html.match(/<script type="__bundler\/template">\n(.*?)\n  <\/script>/s)[1]);
+  const inner = tpl.slice(0, tpl.indexOf('</head>'));
+  // Stessi tag nelle due <head>: il bootstrap sostituisce il documento.
+  for (const [name, head] of [['esterna', outer], ['template', inner]]) {
+    assert.ok(head.includes('<link rel="manifest" href="manifest.webmanifest">'), 'manifest nella head ' + name);
+    assert.ok(head.includes('viewport-fit=cover'), 'viewport-fit nella head ' + name);
+    assert.deepStrictEqual(head.match(/<link rel="apple-touch-startup-image"[^>]*>/g), DEVICES.map(startupTag), 'immagini di avvio nella head ' + name);
+  }
+  for (const d of DEVICES) {
+    const href = startupTag(d).match(/href="([^"]+)"/)[1];
+    assert.deepStrictEqual(pngSize(await (await get(href)).body()), [d[0] * d[2], d[1] * d[2]], href);
+  }
+  const man = await (await get('manifest.webmanifest')).json();
+  assert.strictEqual(new URL(man.start_url, s.url + 'manifest.webmanifest').href, s.url);
+  assert.strictEqual(man.display, 'standalone');
+  assert.strictEqual(man.background_color, '#161826');
+  for (const ic of man.icons) assert.strictEqual(pngSize(await (await get(ic.src)).body()).join('x'), ic.sizes, ic.src);
+
+  // Schermata di caricamento (prima che parta lo script): fondo scuro e figura di 120px al centro.
+  const ctx = await env.browser.newContext({ viewport: { width: 390, height: 844 }, javaScriptEnabled: false });
+  const pg = await ctx.newPage();
+  await pg.goto(s.url);
+  const look = await pg.evaluate(() => {
+    const r = document.querySelector('#__bundler_thumbnail svg').getBoundingClientRect();
+    return { bg: getComputedStyle(document.body).backgroundColor, svg: [r.x, r.y, r.width, r.height].map(Math.round),
+      stato: getComputedStyle(document.getElementById('__bundler_loading')).opacity };
+  });
+  assert.deepStrictEqual(look, { bg: 'rgb(22, 24, 38)', svg: [135, 362, 120, 120], stato: '0' });
+  await ctx.close();
+
+  // Dopo l'avvio la figura sparisce e il template grezzo non è mai visibile.
+  await s.load();
+  assert.strictEqual(await s.pg.locator('#avvio').isVisible(), false, 'figura di avvio nascosta');
+  assert.strictEqual(await s.pg.evaluate(() => getComputedStyle(document.body.appendChild(document.createElement('x-dc'))).display), 'none');
   await s.close();
 });
 

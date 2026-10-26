@@ -14,7 +14,11 @@ Dettagli completi (funzioni, modello dati, decisioni prese, limiti): @docs/PROGE
 - `<script type="__bundler/manifest">`: risorse (runtime x-dc, React 18, ReactDOM, font Inter e Phosphor) in base64, alcune gzip, indicizzate per UUID. Il bootstrap sostituisce ogni UUID del template con un blob URL (i font con un data URL): tutto il manifest viene decodificato a ogni avvio, quindi ogni KB in più rallenta l'apertura.
 - `<script type="__bundler/template">`: **stringa JSON** con l'HTML interno. È qui che vive tutto il codice dell'app.
 - Il bootstrap del bundle crea blob URL per le risorse e imposta `window.__resources`. Il runtime x-dc compila la logica con `new Function`.
-- Eccezione: la `<head>` esterna contiene `<title>Allenamento</title>` e il link ad `apple-touch-icon.png`, aggiunti a mano (`pack` non li tocca). Gli stessi due tag sono anche nella `<head>` del template, perché il bootstrap sostituisce l'intero documento.
+- Eccezione: la parte esterna di `index.html` (fuori dagli script `__bundler`) si modifica a mano, perché `pack` non la tocca. Contiene:
+  - nella `<head>`: `<title>Allenamento</title>` e `apple-touch-icon.png` (in quest'ordine, all'inizio), il link a `manifest.webmanifest`, i meta per la web app (viewport con `viewport-fit=cover`, `apple-mobile-web-app-*`, `theme-color`) e le 13 `apple-touch-startup-image`;
+  - la schermata di caricamento: fondo `#161826`, figura di 120px al centro (`#__bundler_thumbnail`, con `viewBox` vero: `sc-camel-view-box` funziona solo dentro x-dc), stato del bootstrap visibile solo dopo 10s.
+  
+  Gli stessi tag (titolo, icona, manifest, immagini di avvio) sono anche nella `<head>` del template, perché il bootstrap sostituisce l'intero documento. Lì c'è anche lo stile che tiene nascosto `x-dc` (il runtime lo nasconde solo quando parte) e mostra `#avvio`, la stessa figura, finché React non ha disegnato `#dc-root`.
 
 Flusso di modifica, sempre:
 1. `python tools/bundle.py extract` → crea `build/template.html` (cartella ignorata da git).
@@ -83,4 +87,5 @@ Ogni modifica va coperta da un test in `tools/test.js`.
   - l'App key si inserisce nell'interfaccia (Storico → Sincronizzazione Dropbox), non nel codice.
 - File su Dropbox: `/scheda-allenamento.json` dentro la cartella dell'app.
 - `img/wger/`: disegni di Everkinetic da wger (CC BY-SA 3.0), elencati in `WGER` e in `img/wger/CREDITS.md`. Una nuova immagine va aggiunta in entrambi, con autore e licenza verificati: niente AI, filigrane o fonti commerciali.
+- App installata: `manifest.webmanifest` (icone `img/icona-192.png` e `img/icona-512.png`) e immagini di avvio di iOS in `img/avvio/`, una per misura di iPhone in verticale. Si rigenerano tutte con `node tools/immagini.js`, che stampa anche i tag da copiare nelle due `<head>`: per un iPhone nuovo aggiungi la misura in `DEVICES`. Se cambi la figura o il colore di fondo, aggiorna insieme lo script, `#__bundler_thumbnail` e `#avvio`.
 - `sw.js` (service worker, registrato da `swInit()`): rete prima di tutto; se la rete manca, dà errore o non risponde entro 4s, usa l'ultima copia di `index.html` e dell'icona. Tocca solo le GET dentro la cartella della scheda. Se cambi il formato della cache, cambia il nome `CACHE`: le copie vecchie vengono cancellate all'attivazione.
