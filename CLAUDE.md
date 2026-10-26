@@ -8,6 +8,7 @@ Dettagli completi (funzioni, modello dati, decisioni prese, limiti): @docs/PROGE
 - Rispondi in italiano. L'utente vuole risposte dense, precise e verificate: segnala ciò che non hai verificato.
 - Testi dell'interfaccia in italiano con apostrofi e virgolette tipografiche (’ “ ”). Nel codice restano ' e ".
 - Mobile first: viewport di riferimento 390×844, aree tattili di almeno 40px, tema scuro "Nocturne" (variabili CSS `--color-*`, accento `ACC='#9184d9'`).
+- Tocco da app (stile globale nella `<helmet>`): `touch-action:manipulation` su tutto, testo non selezionabile e senza menu della pressione lunga tranne `input`, `textarea` e link, niente rimbalzo della pagina, `overscroll-behavior:contain` sulle schede (`[role=dialog]`). Un testo che l'utente deve poter copiare va reso selezionabile esplicitamente.
 
 ## Come è fatto index.html (importante)
 `index.html` è una "bundled page" esportata da Claude Design. Non modificarlo a mano.

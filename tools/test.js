@@ -700,6 +700,29 @@ test('seduta leggera da ridisegnare: card fuori schermo e righe delle serie', as
   await s.close();
 });
 
+test('tocco da app: niente zoom, selezione e rimbalzo', async env => {
+  const s = await Session.open(env);
+  await s.load();
+  await s.openProg('Lunedì');
+  const c = s.card('Lat pulldown in ginocchio (ancoraggio alto)');
+  await c.getByRole('button', { name: 'Altre azioni' }).click();
+  const st = await s.pg.evaluate(() => {
+    const cs = e => getComputedStyle(e), d = document.querySelector('[role=dialog]');
+    return { html: cs(document.documentElement).overscrollBehaviorY, sel: cs(document.body).userSelect,
+      btn: cs(d.querySelector('button')).touchAction, dialog: cs(d).overscrollBehaviorY, input: cs(document.querySelector('input')).userSelect };
+  });
+  assert.deepStrictEqual(st, { html: 'none', sel: 'none', btn: 'manipulation', dialog: 'contain', input: 'text' });
+  // -webkit-touch-callout esiste solo in Safari: si controlla nel sorgente.
+  assert.match(await (await s.ctx.request.get(s.url)).text(), /body\{-webkit-user-select:none;user-select:none;-webkit-touch-callout:none\}/);
+  await s.pg.getByRole('dialog').getByRole('button', { name: 'Chiudi' }).click();
+  // I campi restano scrivibili con la tastiera.
+  const kg = c.getByRole('textbox', { name: 'Kg serie 1' });
+  await kg.click();
+  await s.pg.keyboard.type('12,5');
+  assert.strictEqual(await kg.inputValue(), '12,5');
+  await s.close();
+});
+
 test('scheda dettagli: disegno wger, crediti e menu', async env => {
   const prev = { ...OLD_SESSION, id: 'lun-2000', t: 2000, items: [{ slot: 'latpd', ex: 'latpd', name: 'Lat pulldown', met: 'r', log: '',
     sets: ['13', '12'].map((v, i) => ({ n: i + 1, kg: '18', v, ok: true, e: 'g', b: '' })) }] };
