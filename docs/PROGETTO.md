@@ -10,26 +10,33 @@ Riepilogo della chat in cui è nata la scheda (ottobre 2026). Il codice in `inde
   - sedie, divano, gradino, zaino o valigia per caricare, corda per saltare.
 - **Non** ha più la barra pilates (da ottobre 2026): niente esercizi che la richiedono.
 
-## Schermate (barra in alto: Programmi · Mese · Storico · Elastici · Regole · Editor)
+## Schermate (barra in alto: Programmi · Mese · Storico · Elastici · Regole · Editor; nascosta durante la seduta)
 
 ### Programmi
 - Elenco delle routine. Per ognuna: nome, descrizione, numero di esercizi e di serie, quando è stata fatta l'ultima volta.
 - Stato "In corso" con barra di avanzamento; tasti Inizia/Riprendi e Modifica.
-- Una routine aperta mostra il link "‹ Programmi", l'avanzamento delle serie, il tasto Azzera e due modalità: **Lista** e **Una serie alla volta**.
+- Una routine aperta apre la **schermata della seduta** (sotto). La barra delle sezioni è nascosta finché non si torna ai Programmi con la freccia in alto.
 
-### Modalità Lista
-Una card per esercizio con:
-- due figure (stick figure SVG generate da `LIB[*].poses`, braccio e gamba vicini e lontani, oggetti di scena: porta, ancoraggio, sedia, box, zaino, elastico);
-- istruzioni, muscoli, Video (ricerca YouTube o link personale), foto personale;
-- serie con kg e ripetizioni (o tempo, o metri);
-- spunta della serie, che avvia il recupero automatico; nei superset mostra "senza pausa" e il recupero parte solo a fine giro. Se kg o valore sono vuoti, la spunta salva quelli dell'ultima volta (o il minimo dell'obiettivo), come la modalità guidata; i kg non si salvano se arrivano dagli elastici scelti.
+### Schermata della seduta (in stile Hevy, sostituisce la vecchia Lista)
+- **In alto, fissa**: freccia per tornare ai Programmi, nome e descrizione della routine, timer di recupero (avvia il recupero della serie in corso), **Termina**. Sotto, lo stato di Dropbox (o “Dati salvati su questo telefono”).
+- **Statistiche**: durata (dalla prima azione), volume (kg × ripetizioni delle serie fatte), serie fatte su totali, barra di avanzamento e pulsante **Guidata**/**Lista** per cambiare modalità.
+- **Blocchi**: titolo del blocco; superset e circuiti hanno una barra viola a sinistra.
+- **Ogni esercizio**:
+  - miniatura rotonda (la tua foto se c'è, altrimenti la figura) e nome: toccandoli si apre la **scheda dettagli**;
+  - menu ⋮: dettagli, cambia esercizio eseguito, copia i valori dell'ultima volta, azzera le serie dell'esercizio (doppio tocco);
+  - chip: recupero (lo avvia), Nota (campo `logs`), esercizio eseguito (originale o alternativa, con dati separati per variante);
+  - nota del programma, record in corso, stallo, suggerimento di progressione; elastici del catalogo con i kg sommati;
+  - tabella **Serie · Precedente · Kg · Rip (o Tempo/Metri) · ✓**: “Precedente” è la serie dell'ultima volta; i campi mostrano gli stessi valori come segnaposto; negli esercizi a tempo ogni riga ha ▶ per avviare il tempo.
+- **Spunta ✓**: avvia il recupero (nei superset “senza pausa” fino a fine giro). Se kg o valore sono vuoti salva quelli dell'ultima volta (o il minimo dell'obiettivo); i kg non si salvano se arrivano dagli elastici scelti.
+- **Serie in corso**: la prima non fatta nell'ordine della seduta (nei superset e nei circuiti alterna gli esercizi, come la guidata) ha il bordo viola e il numero pieno; il suo esercizio mostra “In corso”.
+- **Sforzo** (Facile, Giusta, Al limite): compare sotto la serie appena spuntata; toccando il numero di una serie fatta si riapre.
+- **Aggiungi serie / Rimuovi**: serie in più o in meno solo per questa seduta (`xs`). “Rimuovi” toglie l'ultima serie se non è spuntata e non scende sotto 1.
+- **Scheda dettagli**: tua foto (con Rimuovi), disegno di wger se c'è (con autore e licenza), figure “Come si fa a casa”, oggetti e ancoraggio, nota, istruzioni, ultima volta con Copia, Video, Link, Aggiungi/Cambia foto.
 
-Inoltre:
-- **Esercizio eseguito**: scelta tra originale e alternative, con dati separati per variante.
-- **Ultima volta**: valori della serie precedente come placeholder, più il tasto Copia.
-- **Elastici usati**: chip del catalogo, con i kg sommati in automatico.
-- **Sforzo** per serie: Facile, Giusta o Al limite.
-- Suggerimento di progressione, avviso di stallo, "Record in corso".
+### Figure e immagini
+- **Figure** generate da `LIB[*].poses`: corpo pieno con contorno, arti lontani più scuri, oggetti di scena (porta, ancoraggio, sedia, box, zaino, elastico). Il muscolo principale (`MG`) è rosso, quelli citati nel testo `m` sono rosa (`muscles()`); di profilo il lato anteriore del busto si ricava da ginocchia e piedi (`frontOf()`).
+- **Miniature** (`figThumb()`): prima posa, stessa scala per tutti gli esercizi.
+- **Disegni wger** (`WGER`, file in `img/wger/`, crediti in `img/wger/CREDITS.md`): solo nella scheda dettagli, mai come miniatura. Sono 11 tavole di Everkinetic (CC BY-SA 3.0); per 9 l'attrezzo è diverso (manubri, cavi) e la scheda lo dice. Escluse in ottobre 2026: immagini generate con l'AI, con filigrane di terzi (HOIST, FitnessProgramer, weighttraining.guide), con fonte su siti commerciali, o di provenienza non verificabile.
 
 ### Modalità Una serie alla volta (guidata)
 - Mostra una sola serie: nome, SERIE k/n, figure, obiettivo e recupero, ultima volta.
@@ -40,9 +47,10 @@ Inoltre:
 - Ordine: nei superset e nei circuiti alterna gli esercizi (A1 → B1 → recupero → A2…); nei blocchi singoli fa tutte le serie di un esercizio prima del successivo.
 - Esercizi a tempo: tasto Avvia; allo scadere bip, serie segnata da sola, avanti.
 - Salta serie, Indietro/Avanti in basso, "Serie già completata" con Annulla.
+- Si apre e si chiude con il pulsante Guidata/Lista della schermata della seduta, che resta in alto.
 
 ### Fine seduta
-- "Concludi seduta" in fondo alla routine. Salva nello storico serie, kg, valori, sforzo, elastici, variante, data e durata, poi azzera la routine. C'è Annulla finché non tocchi altro.
+- **Termina** in alto apre una scheda: riepilogo, “Salva nello storico”, “Continua l’allenamento” e “Togli tutte le spunte” (doppio tocco). Salva nello storico serie, kg, valori, sforzo, elastici, variante, data e durata, poi azzera la routine. C'è Annulla finché non tocchi altro.
 - Una seduta non conclusa viene archiviata in automatico il giorno dopo, con flag `auto`.
 - Gli elastici usati nella prima serie diventano quelli di partenza della volta dopo.
 - Il messaggio finale elenca i record battuti e ricorda il backup se ci sono 4 o più sedute non esportate.
@@ -112,7 +120,9 @@ Impostazione del suono a fine recupero (tre bip con Web Audio, tasto Prova) e sc
   {id:`${programma}-${t}`, day, pname, t, start, auto, dn, tot,
    items:[{slot, ex, name, met:'r'|'t'|'m', sets:[{n, kg, v, ok, e:'f'|'g'|'l'|'', b}], log}]}
   ```
-- **Stato principale salvato**: `tab, done, sv, logs, links, mode, cur, alt, start, last, bands, combo, bandHint, eff, sound, lastExport, scombo, step, progs, cex, ualt, ver:2`.
+- **Stato principale salvato**: `tab, done, sv, logs, links, mode, cur, alt, start, last, bands, combo, bandHint, eff, sound, lastExport, scombo, step, xs, progs, cex, ualt, ver:2`.
+- **Serie in più o in meno della seduta**: `xs[`${programma}-${esercizio}`] = n` (anche negativo); il numero di serie è `nEff()` = pianificate + `xs`, almeno 1. Si azzera con la seduta (`clearTab`).
+- **Stato solo in memoria** (non salvato): `sheet`, `effOpen`, `noteOpen`, `mnDel`, `rsDel`, `ask`.
 
 ## Senza rete
 - `sw.js` salva `index.html` e l'icona. Con la rete la pagina arriva sempre da GitHub Pages, così una nuova pubblicazione si vede subito; senza rete, o se la rete non risponde entro 4s, si apre l'ultima copia salvata.
@@ -157,6 +167,7 @@ Impostazione del suono a fine recupero (tre bip con Web Audio, tasto Prova) e sc
 ## Limiti noti e lavoro possibile
 - **Già discusso ma non fatto**: calendario settimanale (programma per giorno), settimana di scarico, misure corporee e foto dei progressi, modalità "seduta breve".
 - **Programmi e impostazioni** in conflitto tra dispositivi: vince l'ultima modifica, senza fusione campo per campo.
+- **Disegni wger** solo per 11 esercizi; senza rete si vedono solo quelli già aperti almeno una volta (il service worker li salva al primo uso).
 - **Foto** solo in locale, in IndexedDB (non in localStorage, che su Safari ha circa 5 MB per tutto il sito). Non vanno nel backup né su Dropbox.
 - **Alternative** legate all'esercizio, non al programma: serie e obiettivo propri di una variante valgono in ogni programma in cui compare l'esercizio di partenza.
 - Il nome dell'opzione Dropbox "Allow public clients" non è stato verificato: se esiste, deve restare su Allow.

@@ -35,6 +35,8 @@ Flusso di modifica, sempre:
   - `class Component extends DCLogic`: lo stato si inizializza con `loadState()`; `this.save(patch|fn, cb)` aggiorna lo stato; `persist()` scrive in localStorage a ogni aggiornamento; `renderVals()` restituisce tutti i binding.
 - Props del componente (`data-props`): `dettaglio` ("Completo" o "Solo figure"), `tracking`, `timerAuto`.
 - **Regola**: ogni binding usato fuori da un `sc-for` deve avere un default nell'oggetto `base` di `renderVals()`, anche se compare solo in una sezione.
+- **Immagini nel markup**: niente `<img src="{{ … }}">`. Il bootstrap inserisce il template nel documento prima dei binding e il browser scaricherebbe l'URL letterale `{{ … }}` (404 in console). Usare un `div` con `role="img"` e `background-image:{{ x }}`, dove il binding contiene tutto `url("…")`.
+- Schermata della seduta: binding `wk*` (intestazione e statistiche), `sh*`/`mn*`/`al*` (scheda dettagli, menu, varianti, Termina), righe delle serie in `wkGroups[].items[].sets`.
 
 ## Invarianti da non rompere
 - Chiavi localStorage:
@@ -47,6 +49,7 @@ Flusso di modifica, sempre:
 - Chiavi dei dati delle serie:
   - serie: `${programmaId}-${esercizioId}-${k}`;
   - dati di una variante: aggiungere `~${altId}`.
+  - serie in più o in meno della seduta: `xs[`${programmaId}-${esercizioId}`]`, azzerate a fine seduta.
   
   Gli ID degli esercizi in `LIB` e gli ID dei programmi originali (`lun`, `mer`, `ven`, `sab`) **non vanno mai rinominati**: storico, kg e record ci sono legati.
 - Un esercizio può comparire **una sola volta per programma**. L'editor lo impone, perché i dati sono indicizzati per esercizio.
@@ -77,4 +80,5 @@ Ogni modifica va coperta da un test in `tools/test.js`.
   - nessun Redirect URI: la scheda usa PKCE e l'utente incolla il codice;
   - l'App key si inserisce nell'interfaccia (Storico → Sincronizzazione Dropbox), non nel codice.
 - File su Dropbox: `/scheda-allenamento.json` dentro la cartella dell'app.
+- `img/wger/`: disegni di Everkinetic da wger (CC BY-SA 3.0), elencati in `WGER` e in `img/wger/CREDITS.md`. Una nuova immagine va aggiunta in entrambi, con autore e licenza verificati: niente AI, filigrane o fonti commerciali.
 - `sw.js` (service worker, registrato da `swInit()`): rete prima di tutto; se la rete manca, dà errore o non risponde entro 4s, usa l'ultima copia di `index.html` e dell'icona. Tocca solo le GET dentro la cartella della scheda. Se cambi il formato della cache, cambia il nome `CACHE`: le copie vecchie vengono cancellate all'attivazione.
