@@ -800,6 +800,40 @@ test('barra delle sezioni in basso con Altro', async env => {
   await s.close();
 });
 
+test('scorrere l’ultima serie a sinistra la elimina', async env => {
+  const s = await Session.open(env);
+  await s.load();
+  await s.openProg('Lunedì');
+  const c = s.card('Lat pulldown in ginocchio (ancoraggio alto)');
+  const rows = c.locator('.set-row');
+  await c.scrollIntoViewIfNeeded();
+  const swipe = async (row, dx) => {
+    const b = await row.boundingBox(), y = b.y + b.height / 2, x = b.x + b.width - 60;   // sul testo “Precedente”
+    await s.pg.mouse.move(x, y); await s.pg.mouse.down();
+    for (let i = 1; i <= 10; i++) { await s.pg.mouse.move(x + dx * i / 10, y); await s.pg.waitForTimeout(25); }
+    await s.pg.mouse.up();
+    await s.pg.waitForTimeout(450);
+  };
+  assert.strictEqual(await rows.count(), 4);
+  await c.getByRole('textbox', { name: 'Kg serie 4' }).fill('15');
+  await swipe(rows.nth(2), -300);                      // non è l’ultima: non succede nulla
+  assert.strictEqual(await rows.count(), 4);
+  await swipe(rows.nth(3), -60);                       // poco e piano: torna al suo posto
+  assert.strictEqual(await rows.count(), 4);
+  assert.strictEqual(await rows.nth(3).evaluate(e => e.style.transform + '|' + e.classList.contains('swiping')), '|false');
+  await swipe(rows.nth(3), -300);                      // abbastanza: si elimina, con i valori scritti
+  assert.strictEqual(await rows.count(), 3);
+  const st = await s.lsJson(KEY);
+  assert.strictEqual(st.xs['lun-latpd'], -1);
+  assert.ok(!st.sv['lun-latpd-3'], 'valori della serie eliminata tolti');
+  await s.set(c, 3).click();                           // spuntata: non si elimina più
+  await s.pg.getByRole('button', { name: 'Chiudi' }).first().click().catch(() => {});
+  await swipe(rows.nth(2), -300);
+  assert.strictEqual(await rows.count(), 3);
+  assert.strictEqual(await rows.nth(2).evaluate(e => e.style.transform), '');
+  await s.close();
+});
+
 test('scheda dettagli: disegno wger, crediti e menu', async env => {
   const prev = { ...OLD_SESSION, id: 'lun-2000', t: 2000, items: [{ slot: 'latpd', ex: 'latpd', name: 'Lat pulldown', met: 'r', log: '',
     sets: ['13', '12'].map((v, i) => ({ n: i + 1, kg: '18', v, ok: true, e: 'g', b: '' })) }] };

@@ -32,7 +32,7 @@ La barra sta in fondo allo schermo, come nelle app iOS, sopra l'area del gesto H
 - **Spunta ✓**: avvia il recupero (nei superset “senza pausa” fino a fine giro). Se kg o valore sono vuoti salva quelli dell'ultima volta (o il minimo dell'obiettivo); i kg non si salvano se arrivano dagli elastici scelti.
 - **Serie in corso**: la prima non fatta nell'ordine della seduta (nei superset e nei circuiti alterna gli esercizi, come la guidata) ha il bordo viola e il numero pieno; il suo esercizio mostra “In corso”.
 - **Sforzo** (Facile, Giusta, Al limite): compare sotto la serie appena spuntata; toccando il numero di una serie fatta si riapre.
-- **Aggiungi serie / Rimuovi**: serie in più o in meno solo per questa seduta (`xs`). “Rimuovi” toglie l'ultima serie se non è spuntata e non scende sotto 1.
+- **Aggiungi serie / Rimuovi**: serie in più o in meno solo per questa seduta (`xs`). “Rimuovi” toglie l'ultima serie se non è spuntata e non scende sotto 1. Lo stesso si fa scorrendo l'ultima serie verso sinistra (compare “Elimina” in rosso): oltre metà riga o con uno scatto si elimina, altrimenti torna al suo posto. Le altre righe non si scorrono, perché i dati delle serie sono indicizzati per numero di serie.
 - **Scheda dettagli**: tua foto (con Rimuovi), disegno di wger se c'è (con autore e licenza), figure “Come si fa a casa”, oggetti e ancoraggio, nota, istruzioni, ultima volta con Copia, Video, Link, Aggiungi/Cambia foto.
 
 ### Figure e immagini
@@ -176,6 +176,9 @@ Impostazione del suono a fine recupero (tre bip con Web Audio, tasto Prova) e sc
 9. Ridisegni più leggeri (misure con CPU rallentata 4× in Chromium, non su iPhone). Il profilo ha mostrato che il calcolo dei valori (`renderVals`) costa circa 1 ms: il tempo va nel runtime x-dc, in React e nel disegno. Per questo non è stato fatto il “ricalcolo del solo esercizio toccato”, proposto all'inizio: non avrebbe dato guadagni misurabili. Fatto invece:
    - timer: testo e barra aggiornati senza ridisegnare la pagina, da ~175 a ~3 ms di script al secondo durante il recupero;
    - spunta: classi CSS al posto degli stili inline ripetuti e `content-visibility` sulle card, da ~130 a ~87 ms di CPU per tocco.
+   
+   Le animazioni aggiunte dopo (punto 10) non cambiano il tempo di risposta al tocco (~58 ms per il ridisegno), ma aggiungono circa 50 ms di CPU distribuiti nei fotogrammi successivi.
+10. Sensazione da app, sempre ottobre 2026: tocco senza zoom né selezione, schede animate e trascinabili, stato premuto, barra delle sezioni in basso con Altro, eliminazione dell'ultima serie scorrendo. Provato in Chromium con mouse e tocchi simulati, non su iPhone.
 
 ## Limiti noti e lavoro possibile
 - **Già discusso ma non fatto**: calendario settimanale (programma per giorno), settimana di scarico, misure corporee e foto dei progressi, modalità "seduta breve".
