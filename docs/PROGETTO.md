@@ -169,9 +169,13 @@ Impostazione del suono a fine recupero (tre bip con Web Audio, tasto Prova) e sc
 6. Versione ospitata su Claude con salvataggio su cloud: costruita e poi **eliminata su richiesta**. Non riproporla. Il codice residuo (`cloudInit`, `cloudFlush`, download tramite `window.claude`) è stato rimosso.
 7. Scelta finale: **GitHub Pages** (repository pubblico: il codice è leggibile, i dati no) più **Dropbox**.
 8. Ottobre 2026, verso una sensazione da app nativa. Pagina alleggerita da 2,98 a 0,70 MB: il font delle icone resta solo in woff2 (letto da Safari su iOS 10 e successivi) e contiene solo le icone usate (`tools/bundle.py` lo rigenera). Con la CPU rallentata 4× in Chromium e la pagina servita in locale, la scheda è pronta in circa 0,9s invece di 1,6s (mediana di 9 aperture; misura fatta sul computer, non su iPhone). In più si scaricano 2,3 MB in meno.
+9. Ridisegni più leggeri (misure con CPU rallentata 4× in Chromium, non su iPhone). Il profilo ha mostrato che il calcolo dei valori (`renderVals`) costa circa 1 ms: il tempo va nel runtime x-dc, in React e nel disegno. Per questo non è stato fatto il “ricalcolo del solo esercizio toccato”, proposto all'inizio: non avrebbe dato guadagni misurabili. Fatto invece:
+   - timer: testo e barra aggiornati senza ridisegnare la pagina, da ~175 a ~3 ms di script al secondo durante il recupero;
+   - spunta: classi CSS al posto degli stili inline ripetuti e `content-visibility` sulle card, da ~130 a ~87 ms di CPU per tocco.
 
 ## Limiti noti e lavoro possibile
 - **Già discusso ma non fatto**: calendario settimanale (programma per giorno), settimana di scarico, misure corporee e foto dei progressi, modalità "seduta breve".
+- **Ogni tocco ridisegna tutta la pagina**: è il modo in cui funziona il runtime x-dc. Per andare oltre servirebbe dividere la scheda in più componenti o cambiare runtime.
 - **Programmi e impostazioni** in conflitto tra dispositivi: vince l'ultima modifica, senza fusione campo per campo.
 - **Disegni wger** solo per 11 esercizi; senza rete si vedono solo quelli già aperti almeno una volta (il service worker li salva al primo uso).
 - **Foto** solo in locale, in IndexedDB (non in localStorage, che su Safari ha circa 5 MB per tutto il sito). Non vanno nel backup né su Dropbox.

@@ -645,6 +645,61 @@ test('serie in corso e sforzo sotto l’ultima spuntata', async env => {
   await s.close();
 });
 
+test('recupero: il timer scorre senza ridisegnare la pagina', async env => {
+  const s = await Session.open(env);
+  await s.load();
+  await s.openProg('Lunedì');
+  // Orologio fermo: il tempo avanza solo con runFor.
+  await s.pg.clock.install();
+  await s.pg.clock.pauseAt(await s.pg.evaluate(() => Date.now()) + 1000);
+  await s.pg.getByRole('button', { name: 'Avvia il recupero' }).click();
+  const text = s.pg.locator('#tm-text'), bar = s.pg.locator('#tm-bar');
+  const secs = async () => { const [m, x] = (await text.innerText()).split(':'); return +m * 60 + +x; };
+  const width = () => bar.evaluate(e => parseFloat(e.style.width));
+  await text.waitFor();
+  const t0 = await secs(), w0 = await width();
+  assert.ok(t0 >= 30, 'recupero di ' + t0 + 's');
+  // Elementi creati da React mentre il recupero scorre: nessuno, cambiano solo testo e barra.
+  await s.pg.evaluate(() => { const R = window.React, f = R.createElement; window.__ce = 0; R.createElement = function () { window.__ce++; return f.apply(this, arguments); }; });
+  await s.pg.clock.runFor(3000);
+  assert.strictEqual(await secs(), t0 - 3);
+  assert.ok(await width() < w0, 'la barra scorre');
+  assert.strictEqual(await s.pg.evaluate(() => window.__ce), 0, 'nessun ridisegno della pagina');
+  await s.pg.getByRole('button', { name: '+15s' }).click();
+  assert.strictEqual(await secs(), t0 + 12);
+  await s.pg.clock.runFor(2000);
+  assert.strictEqual(await secs(), t0 + 10);
+  await s.pg.clock.runFor((t0 + 10) * 1000);
+  await text.getByText('Vai!').waitFor();
+  await s.pg.clock.runFor(7000);
+  await text.waitFor({ state: 'detached' });
+  await s.close();
+});
+
+test('seduta leggera da ridisegnare: card fuori schermo e righe delle serie', async env => {
+  const s = await Session.open(env);
+  await s.load();
+  await s.openProg('Lunedì');
+  const info = await s.pg.evaluate(() => {
+    const cards = [...document.querySelectorAll('section[aria-label]')].filter(e => e.querySelector('button[aria-label^="Serie "]'));
+    const rows = [...document.querySelectorAll('.set-row')];
+    // Negli stili inline delle righe restano solo le proprietà che cambiano da serie a serie.
+    const props = new Set(rows.flatMap(r => [r, ...r.querySelectorAll('[style]')].flatMap(e => [...e.style])));
+    const last = cards[cards.length - 1];
+    return { cards: cards.length, cv: cards.every(c => getComputedStyle(c).contentVisibility === 'auto'),
+      rows: rows.length, props: [...props].sort(), lastDrawn: last.querySelector('.set-row').checkVisibility({ contentVisibilityAuto: true }), lastName: last.getAttribute('aria-label') };
+  });
+  assert.ok(info.cards >= 10 && info.cv, 'content-visibility sulle card: ' + JSON.stringify(info));
+  assert.ok(info.rows >= 30);
+  assert.deepStrictEqual(info.props.filter(p => !/^(grid-template-columns|background(-[a-z]+)*|box-shadow|color|font-weight|border(-[a-z]+)*)$/.test(p)), [], 'stili statici inline nelle righe');
+  assert.strictEqual(info.lastDrawn, false, 'l’ultima card, fuori schermo, non si disegna');
+  const last = s.card(info.lastName);
+  await last.scrollIntoViewIfNeeded();
+  await s.until(() => last.evaluate(e => e.querySelector('.set-row').checkVisibility({ contentVisibilityAuto: true })), 'si disegna quando arriva sullo schermo');
+  await s.set(last, 1).waitFor();
+  await s.close();
+});
+
 test('scheda dettagli: disegno wger, crediti e menu', async env => {
   const prev = { ...OLD_SESSION, id: 'lun-2000', t: 2000, items: [{ slot: 'latpd', ex: 'latpd', name: 'Lat pulldown', met: 'r', log: '',
     sets: ['13', '12'].map((v, i) => ({ n: i + 1, kg: '18', v, ok: true, e: 'g', b: '' })) }] };
