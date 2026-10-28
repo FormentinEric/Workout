@@ -550,7 +550,7 @@ test('figura degli esercizi personalizzati', async env => {
   await s.pg.getByRole('button', { name: 'Aggiungi esercizio' }).first().click();
   await s.pg.getByPlaceholder('Nome dell’esercizio').fill('Affondo laterale');
   await s.pg.getByRole('button', { name: 'Quadricipiti', exact: true }).last().click();
-  await s.pg.getByRole('button', { name: 'Corpo libero', exact: true }).click();
+  await s.pg.getByRole('button', { name: 'Corpo libero', exact: true }).last().click();
   await s.pg.getByRole('button', { name: 'Crea e aggiungi', exact: true }).click();
   await s.pg.getByText('Generica', { exact: true }).waitFor();
 
@@ -623,6 +623,65 @@ test('esercizi da palestra con i disegni Everkinetic', async env => {
   await d.getByRole('button', { name: 'Chiudi' }).click();
   await s.pg.getByRole('button', { name: 'Guidata' }).click();
   await s.pg.getByRole('img', { name: 'Disegno dell’esercizio: Panca piana con bilanciere' }).waitFor();
+  await s.close();
+});
+
+test('ricerca esercizi: luogo, attrezzatura, gruppo, preferiti e recenti', async env => {
+  const sess = (id, t, ex) => ({ ...OLD_SESSION, id: 'lun-' + t, t, items: ex.map(e => ({ slot: e, ex: e, name: e, met: 'r', log: '', sets: [{ n: 1, kg: '', v: '10', ok: true, e: '', b: '' }] })) });
+  const s = await Session.open(env, { seed: { [HKEY]: [sess('a', 3000, ['gpanca', 'latpd']), sess('b', 2000, ['squat'])] } });
+  await s.load();
+  await editProg(s, 'Lunedì');
+  await s.pg.getByRole('button', { name: 'Aggiungi esercizio' }).first().click();
+  const count = async () => +(await s.pg.getByRole('status').filter({ hasText: /esercizi?\b/ }).innerText()).match(/^\d+/)[0];
+  const subs = () => s.pg.locator('button:has(> span[aria-hidden="true"]) > span:nth-child(2) > span:nth-child(2)').allInnerTexts();
+  const names = () => s.pg.locator('button:has(> span[aria-hidden="true"]) > span:nth-child(2) > span:nth-child(1)').allInnerTexts();
+  const chip = label => s.pg.locator('.chip-row button', { hasText: new RegExp('^\\s*' + label + '\\s*$') });
+  const all = await count();
+  assert.ok(all >= 120, 'tutti gli esercizi: ' + all);
+
+  await s.pg.getByRole('button', { name: 'Palestra', exact: true }).click();
+  const gym = await count();
+  assert.ok(gym >= 66 && gym < all);
+  assert.ok((await subs()).every(x => !/· casa/.test(x)), 'in Palestra niente esercizi da casa');
+  assert.strictEqual(await chip('Elastico').count(), 0, 'niente filtro elastico in palestra');
+  await chip('Cavi').click();
+  assert.ok((await subs()).every(x => / · Cavi$/.test(x)), 'solo cavi');
+  await s.pg.locator('.chip-row button', { hasText: /^Petto$/ }).click();
+  assert.deepStrictEqual((await names()).sort(), ['Croci ai cavi']);
+  await s.pg.getByRole('button', { name: 'Azzera filtri' }).click();
+  assert.strictEqual(await count(), all);
+  await s.pg.getByRole('button', { name: 'Casa', exact: true }).click();
+  assert.strictEqual(await count(), all - gym);
+  await s.pg.getByPlaceholder('Cerca un esercizio').fill('elastico');
+  assert.ok((await count()) > 0 && (await count()) < all - gym, 'testo, anche sull’attrezzatura');
+  await s.pg.getByRole('button', { name: 'Azzera filtri' }).click();
+
+  // Preferiti: salvati nello stato (e quindi nel backup e su Dropbox).
+  const star = s.pg.getByRole('button', { name: 'Aggiungi “Panca piana con manubri” ai preferiti' });
+  await star.click();
+  await s.pg.getByRole('button', { name: 'Togli “Panca piana con manubri” dai preferiti' }).waitFor();
+  assert.deepStrictEqual((await s.lsJson(KEY)).fav, { gpancam: 1 });
+  await chip('Preferiti').click();
+  assert.deepStrictEqual(await names(), ['Panca piana con manubri']);
+  // Recenti: gli esercizi delle ultime sedute, dal più recente.
+  await chip('Recenti').click();
+  assert.deepStrictEqual(await names(), ['Panca piana con bilanciere', 'Lat pulldown in ginocchio (ancoraggio alto)', 'Squat con elastico']);
+  await chip('Recenti').click();
+  assert.strictEqual(await count(), all);
+
+  // Esercizio personalizzato con un attrezzo da palestra: filtri e kg.
+  await s.pg.getByPlaceholder('Nome dell’esercizio').fill('Curl Zottman');
+  await s.pg.getByRole('button', { name: 'Bicipiti', exact: true }).last().click();
+  await s.pg.getByRole('button', { name: 'Manubri', exact: true }).last().click();
+  await s.pg.getByRole('button', { name: 'Crea e aggiungi', exact: true }).click();
+  const cex = Object.values((await s.lsJson(KEY)).cex)[0];
+  assert.deepStrictEqual([cex.eq, cex.kg, cex.band], ['db', true, false]);
+  await s.pg.getByRole('button', { name: 'Aggiungi esercizio' }).first().click();
+  await s.pg.getByRole('button', { name: 'Palestra', exact: true }).click();
+  await chip('Manubri').click();
+  assert.ok((await names()).includes('Curl Zottman'));
+  await s.openProg('Lunedì');
+  await s.card('Curl Zottman').getByRole('textbox', { name: 'Kg serie 1' }).waitFor();
   await s.close();
 });
 

@@ -67,7 +67,7 @@ Calendario del mese con i giorni di allenamento (abbreviazione della routine) e 
 - **Settimana**: sedute e serie fatte rispetto al previsto per gruppo muscolare (mappa `MG`), con navigazione tra le settimane.
 - **Sincronizzazione Dropbox** (vedi sotto).
 - **Backup ed esportazione**:
-  - Esporta backup: JSON v2 con `hist`, `logs`, `links`, `alt`, `bands`, `combo`, `progs`, `cex`, `ualt`, `sound`;
+  - Esporta backup: JSON v2 con `hist`, `logs`, `links`, `alt`, `bands`, `combo`, `progs`, `cex`, `ualt`, `fav`, `sound`;
   - Esporta per Excel: CSV con `;` e BOM, una riga per serie, colonne Data, Ora, Programma, Esercizio, Serie, Kg, Valore, Unità, Sforzo, Elastici, Spuntata, Durata, Automatica;
   - Importa: unisce le sedute e ripristina programmi, esercizi personalizzati e alternative;
   - salvataggio dei file con condivisione iOS o download.
@@ -89,7 +89,7 @@ Impostazione del suono a fine recupero (tre bip con Web Audio, tasto Prova) e sc
   - **Alternative**: aggiungi o rimuovi; per ognuna, serie e obiettivo dell'esercizio di partenza oppure propri (serie, ripetizioni, max, tempo o metri, lato). Nei superset e nei circuiti le serie seguono comunque i giri;
   - **Figura** (solo esercizi personalizzati): generica oppure presa da un esercizio esistente, scelta con la ricerca esercizi;
   - spostamento anche tra blocchi, Cambia esercizio, Elimina.
-- **Ricerca esercizi**: testo e filtro per gruppo, ogni esercizio con la sua miniatura (la tua foto se c'è, altrimenti la figura); quelli già presenti nel programma sono disattivati. Si possono creare esercizi personalizzati (nome, gruppo, misura in ripetizioni/tempo/metri, attrezzo: elastico, pesi o corpo libero). Hanno una figura generica in piedi, con elastico o peso secondo l'attrezzo, finché non se ne sceglie una.
+- **Ricerca esercizi**: testo (anche sui muscoli e sull’attrezzatura) e filtri: Tutti/Casa/Palestra, Preferiti (stella su ogni riga, salvati e sincronizzati), Recenti (esercizi delle ultime sedute, dal più recente), attrezzatura (solo quelle presenti con gli altri filtri) e gruppo muscolare; conteggio dei risultati e “Azzera filtri”. Ogni esercizio con la sua miniatura (la tua foto se c'è, altrimenti la figura o il disegno) e gruppo · attrezzatura; quelli già presenti nel programma sono disattivati. Si possono creare esercizi personalizzati (nome, gruppo, misura in ripetizioni/tempo/metri, attrezzo: elastico, corpo libero, manubri, bilanciere, cavi, macchine, multipower o altri pesi; con gli attrezzi da palestra compaiono nel filtro Palestra e hanno la colonna kg). Hanno una figura generica in piedi, con elastico o peso secondo l'attrezzo, finché non se ne sceglie una.
 - Le modifiche si salvano da sole.
 
 ## Logiche principali
@@ -116,7 +116,7 @@ Impostazione del suono a fine recupero (tre bip con Web Audio, tasto Prova) e sc
 - **I quattro programmi originali** stanno in `DAYS0` e vengono convertiti con `toProg()`.
 - **Esercizi da palestra**: `GYM[id] = {ek, n, g, eq, m, r, sd?, cues}` (nome Everkinetic, nome, gruppo, attrezzatura, muscoli, ripetizioni, lato, istruzioni) → `LIB[id] = {gym, ek, eq, kg:'kg', poses:[]}`.
 - **Attrezzatura**: `eqOf(id)` = `LIB[id].eq`, oppure `band` (elastico) / `body` (corpo libero) / `kg` (altri pesi) per gli esercizi da casa; `atGym(id)` è vero per il catalogo `GYM` e per gli attrezzi da palestra.
-- **Esercizi personalizzati**: `cex[id] = {name, grp, mode, band, kg, fig?}` → `LIB` tramite `applyCex()`. `fig` è l'ID di un esercizio di `LIB` di cui usare le pose (`figSrc()`); senza `fig` si usa `genFig()`.
+- **Esercizi personalizzati**: `cex[id] = {name, grp, mode, eq?, band, kg, fig?}`: `eq` (da ottobre 2026) è l'attrezzatura scelta tra quelle di `EQ`; `band` e `kg` restano per compatibilità e per i salvataggi vecchi senza `eq` → `LIB` tramite `applyCex()`. `fig` è l'ID di un esercizio di `LIB` di cui usare le pose (`figSrc()`); senza `fig` si usa `genFig()`.
 - **Alternative**: `ALT_BASE` (fisse) più `ualt[exId] = [{id, short, name, sr?, note?, t?}]` tramite `applyUalt()`.
   - `t = {sets, mode, lo, hi, secs, dist, side}`: serie e obiettivo propri come li ha scritti l'utente; `sr` ne è la versione testuale (`rowSr(t,0)`), l'unica letta in allenamento. Senza `sr` la variante eredita quelli della riga.
   - `altSr()` applica `sr` alla riga; nei blocchi superset e circuito mantiene il numero di serie della riga (i giri). `dayRows(day, st)` usa la variante scelta per contare le serie.
@@ -125,9 +125,9 @@ Impostazione del suono a fine recupero (tre bip con Web Audio, tasto Prova) e sc
   {id:`${programma}-${t}`, day, pname, t, start, auto, dn, tot,
    items:[{slot, ex, name, met:'r'|'t'|'m', sets:[{n, kg, v, ok, e:'f'|'g'|'l'|'', b}], log}]}
   ```
-- **Stato principale salvato**: `tab, done, sv, logs, links, mode, cur, alt, start, last, bands, combo, bandHint, eff, sound, lastExport, scombo, step, xs, progs, cex, ualt, ver:2`.
+- **Stato principale salvato**: `tab, done, sv, logs, links, mode, cur, alt, start, last, bands, combo, bandHint, eff, sound, lastExport, scombo, step, xs, progs, cex, ualt, fav, ver:2`. `fav` = esercizi preferiti `{id: 1}`.
 - **Serie in più o in meno della seduta**: `xs[`${programma}-${esercizio}`] = n` (anche negativo); il numero di serie è `nEff()` = pianificate + `xs`, almeno 1. Si azzera con la seduta (`clearTab`).
-- **Stato solo in memoria** (non salvato): `sheet`, `effOpen`, `noteOpen`, `mnDel`, `rsDel`, `ask`.
+- **Stato solo in memoria** (non salvato): `sheet`, `effOpen`, `noteOpen`, `mnDel`, `rsDel`, `ask`, filtri della ricerca (`pq`, `pgf`, `ppl`, `pfr`, `peq`).
 
 ## Avvio e app installata
 - Icona sulla Home (`apple-touch-icon.png`), `manifest.webmanifest` con nome, colori e icone, meta per la modalità a tutto schermo.
