@@ -81,7 +81,7 @@ Calendario del mese con i giorni di allenamento (abbreviazione della routine) e 
 Catalogo con nome, colore (tocco sul cerchio per cambiarlo) e kg. Si elimina con doppio tocco.
 
 ### Regole (in Altro)
-Impostazione del suono a fine recupero (tre bip con Web Audio, tasto Prova), interruttori “Durante l’allenamento” (tastierino della scheda) e schede di regole (progressione, intensità, alternative, Dropbox…).
+Impostazione del suono a fine recupero (tre bip con Web Audio, tasto Prova), interruttori “Durante l’allenamento” (tastierino della scheda; conto alla rovescia 3-2-1: un bip breve a 3, 2 e 1 secondi dalla fine del recupero e degli esercizi a tempo, solo con il suono attivo) e schede di regole (progressione, intensità, alternative, Dropbox…).
 
 ### Editor
 - Elenco dei programmi con Modifica, Duplica ed Elimina; tasti Nuovo programma e Nuova cartella.
@@ -131,7 +131,7 @@ Impostazione del suono a fine recupero (tre bip con Web Audio, tasto Prova), int
   {id:`${programma}-${t}`, day, pname, t, start, auto, dn, tot,
    items:[{slot, ex, name, met:'r'|'t'|'m', sets:[{n, kg, v, ok, e:'f'|'g'|'l'|'', b}], log}]}
   ```
-- **Stato principale salvato**: `tab, done, sv, logs, links, mode, cur, alt, start, last, bands, combo, bandHint, eff, sound, lastExport, scombo, step, xs, progs, cex, ualt, fav, fds, fdShut, pad, inc, ver:2`. `pad` = tastierino della scheda (false se spento); `inc` = passo dei kg per esercizio `{id: 2.5}` (senza valore vale il passo dell'attrezzatura, `INC`). `fav` = esercizi preferiti `{id: 1}`; `fds` = cartelle delle routine `[{id, name}]` in ordine; `fdShut` = cartelle chiuse `{id: 1}` (`_` per “Senza cartella”).
+- **Stato principale salvato**: `tab, done, sv, logs, links, mode, cur, alt, start, last, bands, combo, bandHint, eff, sound, lastExport, scombo, step, xs, progs, cex, ualt, fav, fds, fdShut, pad, inc, cd, big, ver:2`. `cd` = conto alla rovescia (false se spento); `big` = testo grande nella seduta. `pad` = tastierino della scheda (false se spento); `inc` = passo dei kg per esercizio `{id: 2.5}` (senza valore vale il passo dell'attrezzatura, `INC`). `fav` = esercizi preferiti `{id: 1}`; `fds` = cartelle delle routine `[{id, name}]` in ordine; `fdShut` = cartelle chiuse `{id: 1}` (`_` per “Senza cartella”).
 - **Serie in più o in meno della seduta**: `xs[`${programma}-${esercizio}`] = n` (anche negativo); il numero di serie è `nEff()` = pianificate + `xs`, almeno 1. Si azzera con la seduta (`clearTab`).
 - **Stato solo in memoria** (non salvato): `sheet`, `effOpen`, `noteOpen`, `mnDel`, `rsDel`, `ask`, filtri della ricerca (`pq`, `pgf`, `ppl`, `pfr`, `peq`), campo aperto nel tastierino (`kp`), scelta “solo per oggi” (`ptmp`).
 

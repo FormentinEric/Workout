@@ -1149,6 +1149,37 @@ test('esercizi solo per oggi tolti anche dall’archiviazione automatica', async
   await s.close();
 });
 
+test('conto alla rovescia 3-2-1 prima della fine del recupero', async env => {
+  const s = await Session.open(env);
+  await s.load();
+  await s.openProg('Lunedì');
+  // Frequenze degli oscillatori avviati: 660 Hz i bip del conto alla rovescia, 880/1175 il suono finale.
+  await s.pg.evaluate(() => { window.__osc = []; const C = window.AudioContext || window.webkitAudioContext, f = C.prototype.createOscillator;
+    C.prototype.createOscillator = function () { const o = f.call(this), st = o.start.bind(o); o.start = (...a) => { window.__osc.push(o.frequency.value); return st(...a); }; return o; }; });
+  const run = async () => {
+    await s.pg.clock.pauseAt(await s.pg.evaluate(() => Date.now()) + 1000);
+    await s.pg.evaluate(() => { window.__osc = []; });
+    await s.pg.getByRole('button', { name: 'Avvia il recupero' }).click();
+    const t0 = await s.pg.locator('#tm-text').innerText(), sec = +t0.split(':')[0] * 60 + +t0.split(':')[1];
+    await s.pg.clock.runFor((sec - 5) * 1000);
+    const before = await s.pg.evaluate(() => window.__osc.slice());
+    await s.pg.clock.runFor(6000);
+    const after = await s.pg.evaluate(() => window.__osc.slice());
+    await s.pg.getByText('Vai!').first().waitFor();
+    await s.pg.locator('.fade-in', { hasText: 'Tocca per chiudere' }).click();
+    await s.pg.getByRole('button', { name: 'Chiudi', exact: true }).click().catch(() => {});
+    return { before: before.length, pips: after.filter(f => f === 660).length, end: after.filter(f => f !== 660).length };
+  };
+  await s.pg.clock.install();
+  assert.deepStrictEqual(await run(), { before: 0, pips: 3, end: 3 });
+  await s.tab('Regole');
+  await s.pg.getByRole('switch', { name: 'Conto alla rovescia 3-2-1' }).click();
+  assert.strictEqual((await s.lsJson(KEY)).cd, false);
+  await s.openProg('Lunedì');
+  assert.deepStrictEqual(await run(), { before: 0, pips: 0, end: 3 }, 'spento: solo il suono finale');
+  await s.close();
+});
+
 test('scheda dettagli: disegno wger, crediti e menu', async env => {
   const prev = { ...OLD_SESSION, id: 'lun-2000', t: 2000, items: [{ slot: 'latpd', ex: 'latpd', name: 'Lat pulldown', met: 'r', log: '',
     sets: ['13', '12'].map((v, i) => ({ n: i + 1, kg: '18', v, ok: true, e: 'g', b: '' })) }] };
