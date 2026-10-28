@@ -999,6 +999,33 @@ test('scorrere l’ultima serie a sinistra la elimina', async env => {
   await s.close();
 });
 
+test('barra della serie in corso e scorrimento all’esercizio dopo', async env => {
+  const s = await Session.open(env);
+  await s.load();
+  await s.openProg('Lunedì');
+  const bar = s.pg.getByRole('group', { name: 'Serie in corso' });
+  await bar.getByText('Salto corda').waitFor();
+  await bar.getByText('Serie 1 di 1 · 2:00').waitFor();
+  // La riga in corso è visibile tra l'intestazione fissa e gli elementi fissi in basso.
+  const inView = () => s.pg.evaluate(() => {
+    const r = document.querySelector('.set-row.is-cur').getBoundingClientRect();
+    return r.top >= document.querySelector('.wk-head').getBoundingClientRect().bottom && r.bottom <= document.querySelector('.dock').getBoundingClientRect().top;
+  });
+  await bar.getByRole('button', { name: 'Segna come fatta la serie 1 di Salto corda' }).click();
+  assert.ok((await s.lsJson(KEY)).done['lun-corda-0'], 'spuntata dalla barra');
+  assert.strictEqual((await s.lsJson(KEY)).sv['lun-corda-0'].v, '2:00', 'con il valore proposto');
+  await bar.getByText('Lat pulldown in ginocchio (ancoraggio alto)').waitFor();
+  await bar.getByText('Serie 1 di 4 · — kg × 12-15').waitFor();
+  await s.until(inView, 'scorsa da sola alla serie dell’esercizio dopo');
+  // Toccando la barra si torna alla riga in corso.
+  await s.pg.evaluate(() => window.scrollTo(0, 0));
+  await bar.getByRole('button', { name: /^Vai alla serie in corso/ }).click();
+  await s.until(inView, 'riga in corso mostrata');
+  await s.pg.getByRole('button', { name: 'Guidata' }).click();
+  assert.strictEqual(await bar.count(), 0, 'nella guidata la barra non c’è');
+  await s.close();
+});
+
 test('scheda dettagli: disegno wger, crediti e menu', async env => {
   const prev = { ...OLD_SESSION, id: 'lun-2000', t: 2000, items: [{ slot: 'latpd', ex: 'latpd', name: 'Lat pulldown', met: 'r', log: '',
     sets: ['13', '12'].map((v, i) => ({ n: i + 1, kg: '18', v, ok: true, e: 'g', b: '' })) }] };
