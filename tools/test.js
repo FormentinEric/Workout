@@ -685,6 +685,64 @@ test('ricerca esercizi: luogo, attrezzatura, gruppo, preferiti e recenti', async
   await s.close();
 });
 
+test('routine in cartelle', async env => {
+  const s = await Session.open(env);
+  await s.load();
+  const heads = () => s.pg.locator('button.fd-head .fd-name').allInnerTexts();
+  await s.tab('Programmi');
+  assert.strictEqual(await s.pg.locator('.fd-head').count(), 0, 'senza cartelle l’elenco resta com’era');
+
+  await s.tab('Editor');
+  await s.pg.getByRole('button', { name: 'Nuova cartella' }).click();
+  await s.pg.getByRole('button', { name: 'Nuova cartella' }).click();
+  const names = s.pg.getByRole('textbox', { name: 'Nome della cartella' });
+  await names.nth(0).fill('Casa');
+  await names.nth(1).fill('Palestra');
+  await s.pg.getByRole('combobox', { name: 'Cartella di “Lunedì”' }).selectOption({ label: 'Casa' });
+  await s.pg.getByRole('combobox', { name: 'Cartella di “Mercoledì”' }).selectOption({ label: 'Casa' });
+  await s.pg.getByRole('button', { name: 'Programma in questa cartella' }).nth(1).click();   // in Palestra
+  await s.pg.getByText('Modifica il programma: le modifiche si salvano da sole').waitFor();
+  assert.strictEqual(await s.pg.getByRole('combobox').inputValue(), (await s.lsJson(KEY)).fds[1].id, 'il programma nuovo nasce nella cartella');
+  await s.pg.getByRole('button', { name: /Tutti i programmi/ }).click();
+  await s.pg.getByRole('button', { name: 'Sposta la cartella su' }).nth(1).click();
+  let st = await s.lsJson(KEY);
+  assert.deepStrictEqual(st.fds.map(f => f.name), ['Palestra', 'Casa']);
+  const casa = st.fds[1].id;
+  assert.deepStrictEqual(st.progs.map(p => [p.name, p.fd === casa ? 'Casa' : p.fd ? 'Palestra' : '']),
+    [['Lunedì', 'Casa'], ['Mercoledì', 'Casa'], ['Venerdì', ''], ['Sabato', ''], ['Nuovo programma', 'Palestra']]);
+
+  // Duplica e Ripristina tengono la cartella.
+  await s.pg.locator('div', { has: s.pg.getByRole('combobox', { name: 'Cartella di “Lunedì”' }) }).last().getByRole('button', { name: /Duplica/ }).click();
+  await editProg(s, 'Lunedì');
+  await s.pg.getByRole('button', { name: 'Ripristina la versione originale' }).click();
+  await s.pg.getByRole('button', { name: 'Tocca di nuovo per ripristinare' }).click();
+  st = await s.lsJson(KEY);
+  assert.deepStrictEqual(st.progs.filter(p => p.fd === casa).map(p => p.name), ['Lunedì', 'Lunedì (copia)', 'Mercoledì']);
+
+  // Programmi: sezioni nell'ordine delle cartelle, chiuse e riaperte senza contare come modifica dei dati.
+  await s.tab('Programmi');
+  assert.deepStrictEqual(await heads(), ['Palestra', 'Casa', 'Senza cartella']);
+  const t0 = await s.pg.evaluate(k => localStorage.getItem(k + ':t'), KEY);
+  await s.pg.locator('button.fd-head', { hasText: 'Casa' }).click();
+  await s.pg.locator('article', { hasText: 'Mercoledì' }).waitFor({ state: 'detached' });
+  assert.strictEqual(await s.pg.locator('button.fd-head', { hasText: 'Casa' }).getAttribute('aria-expanded'), 'false');
+  assert.strictEqual(await s.pg.evaluate(k => localStorage.getItem(k + ':t'), KEY), t0, 'aprire o chiudere una cartella non è una modifica');
+  await s.load();
+  assert.strictEqual(await s.pg.locator('article', { hasText: 'Mercoledì' }).count(), 0, 'cartella chiusa anche dopo il riavvio');
+  await s.pg.locator('button.fd-head', { hasText: 'Casa' }).click();
+  await s.pg.locator('article', { hasText: 'Mercoledì' }).waitFor();
+
+  // Eliminare una cartella lascia i programmi, senza cartella.
+  await s.tab('Editor');
+  await s.pg.getByRole('button', { name: 'Elimina la cartella' }).nth(1).click();
+  await s.pg.getByRole('button', { name: /Tocca di nuovo: i programmi restano/ }).click();
+  st = await s.lsJson(KEY);
+  assert.deepStrictEqual(st.fds.map(f => f.name), ['Palestra']);
+  assert.strictEqual(st.progs.length, 6);
+  assert.ok(st.progs.filter(p => /Lunedì|Mercoledì/.test(p.name)).every(p => !p.fd));
+  await s.close();
+});
+
 test('miniature nell’editor e nella ricerca esercizi', async env => {
   const foto = 'data:image/png;base64,' + PNG.toString('base64');
   const s = await Session.open(env, { seed: { [PKEY]: { latpd: foto } } });

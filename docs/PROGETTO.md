@@ -15,6 +15,7 @@ Riepilogo della chat in cui è nata la scheda (ottobre 2026). Il codice in `inde
 La barra sta in fondo allo schermo, come nelle app iOS, sopra l'area del gesto Home. **Altro** raccoglie Elastici e Regole, che hanno “‹ Altro” in alto per tornare. Se un recupero resta attivo uscendo dalla seduta, il timer compare sopra la barra.
 
 ### Programmi
+- **Cartelle** (come Hevy): se esistono, le routine sono raggruppate per cartella, nell'ordine scelto, con “Senza cartella” in fondo. Ogni intestazione ha il numero di routine e “In corso” se una è iniziata; toccandola si chiude o si apre (lo stato resta dopo il riavvio). Senza cartelle l'elenco è come prima.
 - Elenco delle routine. Per ognuna: nome, descrizione, numero di esercizi e di serie, quando è stata fatta l'ultima volta.
 - Stato "In corso" con barra di avanzamento; tasti Inizia/Riprendi e Modifica.
 - Una routine aperta apre la **schermata della seduta** (sotto). La barra delle sezioni è nascosta finché non si torna ai Programmi con la freccia in alto.
@@ -67,7 +68,7 @@ Calendario del mese con i giorni di allenamento (abbreviazione della routine) e 
 - **Settimana**: sedute e serie fatte rispetto al previsto per gruppo muscolare (mappa `MG`), con navigazione tra le settimane.
 - **Sincronizzazione Dropbox** (vedi sotto).
 - **Backup ed esportazione**:
-  - Esporta backup: JSON v2 con `hist`, `logs`, `links`, `alt`, `bands`, `combo`, `progs`, `cex`, `ualt`, `fav`, `sound`;
+  - Esporta backup: JSON v2 con `hist`, `logs`, `links`, `alt`, `bands`, `combo`, `progs`, `cex`, `ualt`, `fav`, `fds`, `sound`;
   - Esporta per Excel: CSV con `;` e BOM, una riga per serie, colonne Data, Ora, Programma, Esercizio, Serie, Kg, Valore, Unità, Sforzo, Elastici, Spuntata, Durata, Automatica;
   - Importa: unisce le sedute e ripristina programmi, esercizi personalizzati e alternative;
   - salvataggio dei file con condivisione iOS o download.
@@ -79,7 +80,8 @@ Catalogo con nome, colore (tocco sul cerchio per cambiarlo) e kg. Si elimina con
 Impostazione del suono a fine recupero (tre bip con Web Audio, tasto Prova) e schede di regole (progressione, intensità, alternative, Dropbox…).
 
 ### Editor
-- Elenco dei programmi con Modifica, Duplica ed Elimina; tasto Nuovo programma.
+- Elenco dei programmi con Modifica, Duplica ed Elimina; tasti Nuovo programma e Nuova cartella.
+- **Cartelle**: nome modificabile, frecce per l'ordine, “Programma in questa cartella”, “Elimina la cartella” (doppio tocco: i programmi restano, senza cartella). Ogni programma ha il menu Cartella, nell'elenco e nella sua pagina; Duplica e Ripristina tengono la cartella.
 - **Programma**: nome, descrizione, "Conta nel riepilogo settimanale", Apri, Ripristina la versione originale (solo `lun`, `mer`, `ven`, `sab`).
 - **Blocchi**: titolo, tipo (Singolo, Superset o Circuito), giri, recupero (passi di 15s), spostamento su/giù, eliminazione.
 - **Esercizi**: ogni riga ha la miniatura dell'esercizio (`thumbOf()`, la stessa della seduta);
@@ -109,7 +111,7 @@ Impostazione del suono a fine recupero (tre bip con Web Audio, tasto Prova) e sc
 ## Modello dati
 - **Programma**:
   ```
-  {id, name, focus, plan, blocks:[{id, title, type:'single'|'superset'|'circuit', rounds, rest,
+  {id, name, focus, plan, fd?, blocks:[{id, title, type:'single'|'superset'|'circuit', rounds, rest,
     items:[{ex, name, sets, mode:'reps'|'max'|'time'|'dist', lo, hi, secs, dist, side, kg, note}]}]}
   ```
 - **Compilazione** (`compileProg`): righe `[bloccoId, exId, nome, sr, nota, kg]` con `sr` testuale (es. `4 × 12-15 per gamba`, `3 × 1:00`, `1 × 20 min`, `3 × 30 m`) più `meta[bloccoId] = {title, type, chain, giri, rest}`. Il resto del codice legge queste righe (`DAYS`).
@@ -125,7 +127,7 @@ Impostazione del suono a fine recupero (tre bip con Web Audio, tasto Prova) e sc
   {id:`${programma}-${t}`, day, pname, t, start, auto, dn, tot,
    items:[{slot, ex, name, met:'r'|'t'|'m', sets:[{n, kg, v, ok, e:'f'|'g'|'l'|'', b}], log}]}
   ```
-- **Stato principale salvato**: `tab, done, sv, logs, links, mode, cur, alt, start, last, bands, combo, bandHint, eff, sound, lastExport, scombo, step, xs, progs, cex, ualt, fav, ver:2`. `fav` = esercizi preferiti `{id: 1}`.
+- **Stato principale salvato**: `tab, done, sv, logs, links, mode, cur, alt, start, last, bands, combo, bandHint, eff, sound, lastExport, scombo, step, xs, progs, cex, ualt, fav, fds, fdShut, ver:2`. `fav` = esercizi preferiti `{id: 1}`; `fds` = cartelle delle routine `[{id, name}]` in ordine; `fdShut` = cartelle chiuse `{id: 1}` (`_` per “Senza cartella”).
 - **Serie in più o in meno della seduta**: `xs[`${programma}-${esercizio}`] = n` (anche negativo); il numero di serie è `nEff()` = pianificate + `xs`, almeno 1. Si azzera con la seduta (`clearTab`).
 - **Stato solo in memoria** (non salvato): `sheet`, `effOpen`, `noteOpen`, `mnDel`, `rsDel`, `ask`, filtri della ricerca (`pq`, `pgf`, `ppl`, `pfr`, `peq`).
 
