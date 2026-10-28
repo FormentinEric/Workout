@@ -32,6 +32,7 @@ La barra sta in fondo allo schermo, come nelle app iOS, sopra l'area del gesto H
   - tabella **Serie · Precedente · Kg · Rip (o Tempo/Metri) · ✓**: “Precedente” è la serie dell'ultima volta; i campi mostrano gli stessi valori come segnaposto; negli esercizi a tempo ogni riga ha ▶ per avviare il tempo.
 - **Spunta ✓**: avvia il recupero (nei superset “senza pausa” fino a fine giro). Se kg o valore sono vuoti salva quelli dell'ultima volta (o il minimo dell'obiettivo); i kg non si salvano se arrivano dagli elastici scelti.
 - **Serie in corso**: la prima non fatta nell'ordine della seduta (nei superset e nei circuiti alterna gli esercizi, come la guidata) ha il bordo viola e il numero pieno; il suo esercizio mostra “In corso”.
+- **Tastierino** (al posto della tastiera dell'iPhone, disattivabile in Regole): toccando un campo kg o ripetizioni/metri si apre in basso, con il campo evidenziato e la riga sempre visibile sopra. Cifre e virgola (il primo tasto sostituisce il valore), ⌫, −/+ del passo (kg: il passo dell'esercizio, toccando “Passo” si sceglie tra 1, 1,25, 2, 2,5, 5 e 10 kg, salvato per esercizio; ripetizioni ±1; metri ±5), “Ultima” o “Proposto” (il valore dell'ultima volta o il minimo dell'obiettivo), “Avanti” (kg → ripetizioni → serie dopo) e “Fatto”. La spunta della serie lo chiude. I campi a tempo usano la tastiera normale.
 - **Barra della serie in corso** (solo lista), fissa in basso: miniatura, esercizio, “Serie k di n · kg × ripetizioni” (i valori scritti o quelli proposti) e una ✓ grande, che fa la stessa cosa della ✓ della riga. Toccando il nome si torna alla riga.
 - **Scorrimento automatico**: dopo una spunta, se la serie successiva (anche nell'esercizio dopo) non si vede, la pagina scorre fino a portarla tra l'intestazione e gli elementi fissi in basso.
 - **Sforzo** (Facile, Giusta, Al limite): compare sotto la serie appena spuntata; toccando il numero di una serie fatta si riapre.
@@ -70,7 +71,7 @@ Calendario del mese con i giorni di allenamento (abbreviazione della routine) e 
 - **Settimana**: sedute e serie fatte rispetto al previsto per gruppo muscolare (mappa `MG`), con navigazione tra le settimane.
 - **Sincronizzazione Dropbox** (vedi sotto).
 - **Backup ed esportazione**:
-  - Esporta backup: JSON v2 con `hist`, `logs`, `links`, `alt`, `bands`, `combo`, `progs`, `cex`, `ualt`, `fav`, `fds`, `sound`;
+  - Esporta backup: JSON v2 con `hist`, `logs`, `links`, `alt`, `bands`, `combo`, `progs`, `cex`, `ualt`, `fav`, `fds`, `inc`, `sound`;
   - Esporta per Excel: CSV con `;` e BOM, una riga per serie, colonne Data, Ora, Programma, Esercizio, Serie, Kg, Valore, Unità, Sforzo, Elastici, Spuntata, Durata, Automatica;
   - Importa: unisce le sedute e ripristina programmi, esercizi personalizzati e alternative;
   - salvataggio dei file con condivisione iOS o download.
@@ -79,7 +80,7 @@ Calendario del mese con i giorni di allenamento (abbreviazione della routine) e 
 Catalogo con nome, colore (tocco sul cerchio per cambiarlo) e kg. Si elimina con doppio tocco.
 
 ### Regole (in Altro)
-Impostazione del suono a fine recupero (tre bip con Web Audio, tasto Prova) e schede di regole (progressione, intensità, alternative, Dropbox…).
+Impostazione del suono a fine recupero (tre bip con Web Audio, tasto Prova), interruttori “Durante l’allenamento” (tastierino della scheda) e schede di regole (progressione, intensità, alternative, Dropbox…).
 
 ### Editor
 - Elenco dei programmi con Modifica, Duplica ed Elimina; tasti Nuovo programma e Nuova cartella.
@@ -99,8 +100,8 @@ Impostazione del suono a fine recupero (tre bip con Web Audio, tasto Prova) e sc
 ## Logiche principali
 - **Progressione**, calcolata sull'ultima seduta dello stesso programma ed esercizio:
   - serie mancanti → completale prima di aumentare;
-  - tutte al limite alto del range → aumenta la tensione;
-  - tutte "facili" nel range → aumenta;
+  - tutte al limite alto del range → aumenta la tensione (con i pesi: “prova X kg”, kg dell'ultima volta più il passo dell'esercizio);
+  - tutte "facili" nel range → aumenta (con i pesi, come sopra);
   - sotto il range e "al limite" → alleggerisci;
   - sotto il range e "facile" → spingi di più;
   - altrimenti +1 ripetizione.
@@ -129,9 +130,9 @@ Impostazione del suono a fine recupero (tre bip con Web Audio, tasto Prova) e sc
   {id:`${programma}-${t}`, day, pname, t, start, auto, dn, tot,
    items:[{slot, ex, name, met:'r'|'t'|'m', sets:[{n, kg, v, ok, e:'f'|'g'|'l'|'', b}], log}]}
   ```
-- **Stato principale salvato**: `tab, done, sv, logs, links, mode, cur, alt, start, last, bands, combo, bandHint, eff, sound, lastExport, scombo, step, xs, progs, cex, ualt, fav, fds, fdShut, ver:2`. `fav` = esercizi preferiti `{id: 1}`; `fds` = cartelle delle routine `[{id, name}]` in ordine; `fdShut` = cartelle chiuse `{id: 1}` (`_` per “Senza cartella”).
+- **Stato principale salvato**: `tab, done, sv, logs, links, mode, cur, alt, start, last, bands, combo, bandHint, eff, sound, lastExport, scombo, step, xs, progs, cex, ualt, fav, fds, fdShut, pad, inc, ver:2`. `pad` = tastierino della scheda (false se spento); `inc` = passo dei kg per esercizio `{id: 2.5}` (senza valore vale il passo dell'attrezzatura, `INC`). `fav` = esercizi preferiti `{id: 1}`; `fds` = cartelle delle routine `[{id, name}]` in ordine; `fdShut` = cartelle chiuse `{id: 1}` (`_` per “Senza cartella”).
 - **Serie in più o in meno della seduta**: `xs[`${programma}-${esercizio}`] = n` (anche negativo); il numero di serie è `nEff()` = pianificate + `xs`, almeno 1. Si azzera con la seduta (`clearTab`).
-- **Stato solo in memoria** (non salvato): `sheet`, `effOpen`, `noteOpen`, `mnDel`, `rsDel`, `ask`, filtri della ricerca (`pq`, `pgf`, `ppl`, `pfr`, `peq`).
+- **Stato solo in memoria** (non salvato): `sheet`, `effOpen`, `noteOpen`, `mnDel`, `rsDel`, `ask`, filtri della ricerca (`pq`, `pgf`, `ppl`, `pfr`, `peq`), campo aperto nel tastierino (`kp`).
 
 ## Avvio e app installata
 - Icona sulla Home (`apple-touch-icon.png`), `manifest.webmanifest` con nome, colori e icone, meta per la modalità a tutto schermo.

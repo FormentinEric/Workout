@@ -1026,6 +1026,61 @@ test('barra della serie in corso e scorrimento all’esercizio dopo', async env 
   await s.close();
 });
 
+// Routine da palestra con una seduta precedente, per tastierino e progressione dei kg.
+const GYM_PROG = { id: 'gym1', name: 'Palestra A', focus: '', plan: true, blocks: [{ id: 'k1', title: 'Blocco 1', type: 'single', rounds: 0, rest: 90,
+  items: [{ ex: 'gpanca', name: 'Panca piana con bilanciere', sets: 2, mode: 'reps', lo: '6', hi: '10', secs: 45, dist: '30', side: '', kg: '', note: '' }] }] };
+const GYM_SES = { id: 'gym1-5000', day: 'gym1', pname: 'Palestra A', t: 5000, start: null, auto: false, dn: 2, tot: 2,
+  items: [{ slot: 'gpanca', ex: 'gpanca', name: 'Panca piana con bilanciere', met: 'r', log: '', sets: [1, 2].map(n => ({ n, kg: '60', v: '10', ok: true, e: 'f', b: '' })) }] };
+
+test('tastierino per kg e ripetizioni, passo dei kg e progressione', async env => {
+  const s = await Session.open(env, { seed: { [KEY]: { ver: 2, progs: [GYM_PROG] }, [HKEY]: [GYM_SES] } });
+  await s.load();
+  await s.openProg('Palestra A');
+  const c = s.card('Panca piana con bilanciere');
+  await c.getByText('Range superato in tutte le serie: prova 62,5 kg (+2,5).').waitFor();
+  const kp = s.pg.getByRole('group', { name: 'Tastierino' });
+  const kg1 = c.getByRole('textbox', { name: 'Kg serie 1' });
+  assert.strictEqual(await kg1.getAttribute('inputmode'), 'none', 'niente tastiera dell’iPhone');
+  await kg1.click();
+  await kp.getByText('Serie 1 · Kg').waitFor();
+  assert.strictEqual(await s.pg.getByRole('group', { name: 'Serie in corso' }).count(), 0, 'il tastierino prende il posto della barra');
+  const key = name => kp.getByRole('button', { name, exact: true });
+  await key('Come l’ultima volta: 60').click();
+  await key('Più 2,5').click();
+  assert.strictEqual(await kg1.inputValue(), '62,5');
+  await key('Cancella').click();
+  await key('5').click();
+  assert.strictEqual(await kg1.inputValue(), '62,5', 'dopo un tasto si continua a scrivere');
+  await kp.getByRole('button', { name: 'Passo 2,5 kg' }).click();
+  await kp.getByRole('button', { name: 'Passo 5 kg' }).waitFor();
+  assert.deepStrictEqual((await s.lsJson(KEY)).inc, { gpanca: 5 });
+  await key('Avanti').click();
+  await kp.getByText('Serie 1 · Ripetizioni').waitFor();
+  await key('8').click();
+  await key('Avanti').click();
+  await kp.getByText('Serie 2 · Kg').waitFor();
+  await key('7').click();
+  await key('0').click();
+  let st = (await s.lsJson(KEY)).sv;
+  assert.deepStrictEqual([st['gym1-gpanca-0'], st['gym1-gpanca-1']], [{ kg: '62,5', v: '8' }, { kg: '70' }], 'il primo tasto sostituisce il valore');
+  await kp.getByRole('button', { name: 'Fatto' }).click();
+  assert.strictEqual(await kp.count(), 0);
+  // La spunta della riga chiude il tastierino.
+  await c.getByRole('textbox', { name: 'Ripetizioni serie 2' }).click();
+  await kp.waitFor();
+  await s.set(c, 2).click();
+  assert.strictEqual(await kp.count(), 0, 'chiuso dalla spunta');
+  // Con il tastierino spento torna la tastiera dell’iPhone.
+  await s.tab('Regole');
+  await s.pg.getByRole('switch', { name: 'Tastierino della scheda' }).click();
+  assert.strictEqual((await s.lsJson(KEY)).pad, false);
+  await s.openProg('Palestra A');
+  await kg1.click();
+  assert.strictEqual(await kg1.getAttribute('inputmode'), 'decimal');
+  assert.strictEqual(await kp.count(), 0);
+  await s.close();
+});
+
 test('scheda dettagli: disegno wger, crediti e menu', async env => {
   const prev = { ...OLD_SESSION, id: 'lun-2000', t: 2000, items: [{ slot: 'latpd', ex: 'latpd', name: 'Lat pulldown', met: 'r', log: '',
     sets: ['13', '12'].map((v, i) => ({ n: i + 1, kg: '18', v, ok: true, e: 'g', b: '' })) }] };
