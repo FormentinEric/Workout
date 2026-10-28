@@ -1021,6 +1021,13 @@ test('barra della serie in corso e scorrimento all’esercizio dopo', async env 
   await s.pg.evaluate(() => window.scrollTo(0, 0));
   await bar.getByRole('button', { name: /^Vai alla serie in corso/ }).click();
   await s.until(inView, 'riga in corso mostrata');
+  // Una serie fatta fuori ordine: la serie in corso diventa la successiva a quella, non torna indietro.
+  const chest = s.card('Chest press (ancoraggio all’altezza del petto)');
+  await s.set(chest, 1).click();
+  await bar.getByText('Serie 2 di 4').waitFor();
+  assert.strictEqual(await bar.getByText('Chest press (ancoraggio all’altezza del petto)').count(), 1);
+  assert.ok(await chest.locator('.set-row.is-cur').count(), 'la riga in corso è nella stessa card');
+  await s.until(inView, 'e resta visibile');
   await s.pg.getByRole('button', { name: 'Guidata' }).click();
   assert.strictEqual(await bar.count(), 0, 'nella guidata la barra non c’è');
   await s.close();
