@@ -38,7 +38,7 @@ Icone Phosphor (`<i class="ph ph-nome">`): il template contiene solo le regole C
   - `<sc-for list="{{ array }}" as="x" hint-placeholder-count="N">`;
   - eventi `sc-camel-on-click`, `sc-camel-on-change` (input controllati, scattano a ogni tasto), `sc-camel-input-mode`.
 - `<script type="text/x-dc" data-dc-script data-props="…">`: tutta la logica.
-  - Costanti: `LIB` (55 esercizi con pose disegnate in SVG), `ALT`, `DAYS0`, `MG`, `RULES0`.
+  - Costanti: `LIB` (55 esercizi da casa con pose disegnate in SVG), `GYM` (66 esercizi da palestra con i disegni Everkinetic, aggiunti a `LIB`, `MG` e `NAMES` all'avvio), `EQ` (attrezzature), `ALT`, `DAYS0`, `MG`, `RULES0`.
   - `class Component extends DCLogic`: lo stato si inizializza con `loadState()`; `this.save(patch|fn, cb)` aggiorna lo stato; `persist()` scrive in localStorage a ogni aggiornamento; `renderVals()` restituisce tutti i binding.
 - Props del componente (`data-props`): `dettaglio` ("Completo" o "Solo figure"), `tracking`, `timerAuto`.
 - **Regola**: ogni binding usato fuori da un `sc-for` deve avere un default nell'oggetto `base` di `renderVals()`, anche se compare solo in una sezione.
@@ -65,7 +65,7 @@ Icone Phosphor (`<i class="ph ph-nome">`): il template contiene solo le regole C
   - dati di una variante: aggiungere `~${altId}`.
   - serie in più o in meno della seduta: `xs[`${programmaId}-${esercizioId}`]`, azzerate a fine seduta.
   
-  Gli ID degli esercizi in `LIB` e gli ID dei programmi originali (`lun`, `mer`, `ven`, `sab`) **non vanno mai rinominati**: storico, kg e record ci sono legati.
+  Gli ID degli esercizi in `LIB` e in `GYM` (iniziano con `g`) e gli ID dei programmi originali (`lun`, `mer`, `ven`, `sab`) **non vanno mai rinominati**: storico, kg e record ci sono legati.
 - Un esercizio può comparire **una sola volta per programma**. L'editor lo impone, perché i dati sono indicizzati per esercizio.
 - Gli ID di programmi, blocchi e sedute non devono contenere `-`.
 - Lo stato salvato deve restare compatibile all'indietro. Se cambi formato, aggiungi una migrazione in `migrate()` o `loadState()`.
@@ -94,6 +94,7 @@ Ogni modifica va coperta da un test in `tools/test.js`.
   - nessun Redirect URI: la scheda usa PKCE e l'utente incolla il codice;
   - l'App key si inserisce nell'interfaccia (Storico → Sincronizzazione Dropbox), non nel codice.
 - File su Dropbox: `/scheda-allenamento.json` dentro la cartella dell'app.
+- `img/ek/`: disegni Everkinetic degli esercizi da palestra (CC BY-SA 4.0, dal repository `everkinetic/data`): `<id>.jpg` con i due disegni affiancati (scheda dettagli e guidata) e `<id>-t.jpg` quadrata (miniatura). Si generano con `python tools/everkinetic.py <copia di everkinetic/data>`, che legge `GYM` dal template e riscrive anche `img/ek/CREDITS.md`: per un esercizio nuovo basta aggiungerlo a `GYM` con il nome Everkinetic in `ek`.
 - `img/wger/`: disegni di Everkinetic da wger (CC BY-SA 3.0), elencati in `WGER` e in `img/wger/CREDITS.md`. Una nuova immagine va aggiunta in entrambi, con autore e licenza verificati: niente AI, filigrane o fonti commerciali.
 - App installata: `manifest.webmanifest` (icone `img/icona-192.png` e `img/icona-512.png`) e immagini di avvio di iOS in `img/avvio/`, una per misura di iPhone in verticale. Si rigenerano tutte con `node tools/immagini.js`, che stampa anche i tag da copiare nelle due `<head>`: per un iPhone nuovo aggiungi la misura in `DEVICES`. Se cambi la figura o il colore di fondo, aggiorna insieme lo script, `#__bundler_thumbnail` e `#avvio`.
 - `sw.js` (service worker, registrato da `swInit()`): rete prima di tutto; se la rete manca, dà errore o non risponde entro 4s, usa l'ultima copia di `index.html` e dell'icona. Tocca solo le GET dentro la cartella della scheda. Se cambi il formato della cache, cambia il nome `CACHE`: le copie vecchie vengono cancellate all'attivazione.

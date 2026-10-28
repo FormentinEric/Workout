@@ -583,6 +583,49 @@ test('figura degli esercizi personalizzati', async env => {
   await s.close();
 });
 
+test('esercizi da palestra con i disegni Everkinetic', async env => {
+  const s = await Session.open(env);
+  // Ogni esercizio del catalogo GYM ha tavola, miniatura e riga nei crediti.
+  const html = await (await s.ctx.request.get(s.url)).text();
+  const tpl = JSON.parse(html.match(/<script type="__bundler\/template">\n(.*?)\n  <\/script>/s)[1]);
+  const gym = [...tpl.matchAll(/\b(g\w+):\{ek:'([a-z0-9-]+)'/g)].map(m => m[1]);
+  const credits = fs.readFileSync(path.join(ROOT, 'img', 'ek', 'CREDITS.md'), 'utf8');
+  assert.ok(gym.length >= 60, 'esercizi da palestra: ' + gym.length);
+  for (const id of gym) {
+    assert.ok(fs.existsSync(path.join(ROOT, 'img', 'ek', id + '.jpg')) && fs.existsSync(path.join(ROOT, 'img', 'ek', id + '-t.jpg')), 'immagini di ' + id);
+    assert.ok(credits.includes('| `' + id + '` |'), 'crediti di ' + id);
+  }
+  assert.strictEqual(fs.readdirSync(path.join(ROOT, 'img', 'ek')).filter(f => f.endsWith('.jpg')).length, gym.length * 2, 'nessuna immagine in più');
+
+  // Un programma nuovo con la panca piana: serie e ripetizioni proposte, kg, miniatura, scheda e guidata.
+  await s.load();
+  await s.tab('Editor');
+  await s.pg.getByRole('button', { name: 'Nuovo programma' }).click();
+  await s.pg.getByRole('button', { name: 'Aggiungi esercizio' }).first().click();
+  await s.pg.getByPlaceholder('Cerca un esercizio').fill('panca piana con bil');
+  await s.pg.getByRole('button', { name: /^Panca piana con bilanciere/ }).click();
+  const prog = (await s.lsJson(KEY)).progs.find(p => p.name === 'Nuovo programma');
+  assert.deepStrictEqual((({ ex, sets, mode, lo, hi }) => ({ ex, sets, mode, lo, hi }))(prog.blocks[0].items[0]), { ex: 'gpanca', sets: 3, mode: 'reps', lo: '6', hi: '10' });
+  await s.openProg('Nuovo programma');
+  const c = s.card('Panca piana con bilanciere');
+  assert.match(await c.locator('[role=button][aria-label="Dettagli dell’esercizio"], button[aria-label="Dettagli dell’esercizio"]').first().evaluate(e => {
+    const t = e.querySelector('[style*="background-image"]') || e; return getComputedStyle(t).backgroundImage; }), /img\/ek\/gpanca-t\.jpg/);
+  await c.getByRole('textbox', { name: 'Kg serie 1' }).waitFor();
+  const d = await s.details(c);
+  const img = d.getByRole('img', { name: 'Disegno dell’esercizio: Panca piana con bilanciere' });
+  const src = (await img.getAttribute('style')).match(/url\("([^"]+)"\)/)[1];
+  assert.strictEqual(src, 'img/ek/gpanca.jpg');
+  assert.ok(await s.pg.evaluate(u => new Promise(r => { const i = new Image(); i.onload = () => r(i.naturalWidth > 0); i.onerror = () => r(false); i.src = u; }), src), 'tavola caricata');
+  assert.match(await d.getByRole('link', { name: 'CC BY-SA 4.0' }).getAttribute('href'), /creativecommons\.org\/licenses\/by-sa\/4\.0/);
+  assert.match(await d.getByRole('link', { name: 'everkinetic/data' }).getAttribute('href'), /github\.com\/everkinetic\/data/);
+  assert.strictEqual(await d.getByText('Come si fa a casa').count(), 0, 'niente figure da casa');
+  await d.getByText(/Mani poco più larghe delle spalle/).waitFor();
+  await d.getByRole('button', { name: 'Chiudi' }).click();
+  await s.pg.getByRole('button', { name: 'Guidata' }).click();
+  await s.pg.getByRole('img', { name: 'Disegno dell’esercizio: Panca piana con bilanciere' }).waitFor();
+  await s.close();
+});
+
 test('miniature nell’editor e nella ricerca esercizi', async env => {
   const foto = 'data:image/png;base64,' + PNG.toString('base64');
   const s = await Session.open(env, { seed: { [PKEY]: { latpd: foto } } });
@@ -596,7 +639,12 @@ test('miniature nell’editor e nella ricerca esercizi', async env => {
   await s.pg.getByPlaceholder('Cerca un esercizio').waitFor();
   const thumbs = await s.pg.locator('button:has(> span[aria-hidden="true"])').evaluateAll(els => els.map(e => getComputedStyle(e.firstElementChild).backgroundImage));
   assert.ok(thumbs.length >= 55, 'una riga per esercizio: ' + thumbs.length);
-  assert.ok(thumbs.every(b => /^url\("data:image\/(svg\+xml|png)/.test(b)), 'ogni esercizio della ricerca ha la miniatura');
+  // Figura (svg) o foto per gli esercizi da casa, disegno Everkinetic per quelli da palestra.
+  assert.ok(thumbs.every(b => /^url\("(data:image\/(svg\+xml|png)|[^"]*\/img\/ek\/g\w+-t\.jpg")/.test(b)), 'ogni esercizio della ricerca ha la miniatura');
+  const ek = thumbs.filter(b => /img\/ek\//.test(b)).map(b => b.slice(5, -2));
+  assert.ok(ek.length >= 60, 'esercizi da palestra: ' + ek.length);
+  const ok = await s.pg.evaluate(us => Promise.all(us.map(u => new Promise(r => { const i = new Image(); i.onload = () => r(i.naturalWidth === 144); i.onerror = () => r(false); i.src = u; }))), ek);
+  assert.ok(ok.every(Boolean), 'miniature da palestra caricate');
   await s.close();
 });
 

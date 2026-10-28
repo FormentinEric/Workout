@@ -38,6 +38,7 @@ La barra sta in fondo allo schermo, come nelle app iOS, sopra l'area del gesto H
 ### Figure e immagini
 - **Figure** generate da `LIB[*].poses`: corpo pieno con contorno, arti lontani più scuri, oggetti di scena (porta, ancoraggio, sedia, box, zaino, elastico). Il muscolo principale (`MG`) è rosso, quelli citati nel testo `m` sono rosa (`muscles()`); di profilo il lato anteriore del busto si ricava da ginocchia e piedi (`frontOf()`).
 - **Miniature** (`figThumb()`): prima posa, stessa scala per tutti gli esercizi.
+- **Esercizi da palestra** (`GYM`, ottobre 2026): 66 esercizi con manubri, bilanciere, cavi, macchine e multipower, scelti tra i 252 con disegni del progetto di dati aperti Everkinetic (CC BY-SA 4.0; i disegni di wger vengono dallo stesso autore). Per tutti i gruppi muscolari; nomi e istruzioni in italiano scritti per la scheda. La miniatura è il primo disegno (`img/ek/<id>-t.jpg`), la scheda dettagli e la guidata mostrano i due disegni affiancati al posto delle figure “Come si fa a casa”. Serie e ripetizioni proposte (`r`, `sd`) quando si aggiungono a un programma; colonna kg sempre presente. Esclusi: foto di siti commerciali (copyright) e le tavole Everkinetic deformate o doppioni degli esercizi da casa.
 - **Disegni wger** (`WGER`, file in `img/wger/`, crediti in `img/wger/CREDITS.md`): solo nella scheda dettagli, mai come miniatura. Sono 11 tavole di Everkinetic (CC BY-SA 3.0); per 9 l'attrezzo è diverso (manubri, cavi) e la scheda lo dice. Escluse in ottobre 2026: immagini generate con l'AI, con filigrane di terzi (HOIST, FitnessProgramer, weighttraining.guide), con fonte su siti commerciali, o di provenienza non verificabile.
 
 ### Modalità Una serie alla volta (guidata)
@@ -113,6 +114,8 @@ Impostazione del suono a fine recupero (tre bip con Web Audio, tasto Prova) e sc
   ```
 - **Compilazione** (`compileProg`): righe `[bloccoId, exId, nome, sr, nota, kg]` con `sr` testuale (es. `4 × 12-15 per gamba`, `3 × 1:00`, `1 × 20 min`, `3 × 30 m`) più `meta[bloccoId] = {title, type, chain, giri, rest}`. Il resto del codice legge queste righe (`DAYS`).
 - **I quattro programmi originali** stanno in `DAYS0` e vengono convertiti con `toProg()`.
+- **Esercizi da palestra**: `GYM[id] = {ek, n, g, eq, m, r, sd?, cues}` (nome Everkinetic, nome, gruppo, attrezzatura, muscoli, ripetizioni, lato, istruzioni) → `LIB[id] = {gym, ek, eq, kg:'kg', poses:[]}`.
+- **Attrezzatura**: `eqOf(id)` = `LIB[id].eq`, oppure `band` (elastico) / `body` (corpo libero) / `kg` (altri pesi) per gli esercizi da casa; `atGym(id)` è vero per il catalogo `GYM` e per gli attrezzi da palestra.
 - **Esercizi personalizzati**: `cex[id] = {name, grp, mode, band, kg, fig?}` → `LIB` tramite `applyCex()`. `fig` è l'ID di un esercizio di `LIB` di cui usare le pose (`figSrc()`); senza `fig` si usa `genFig()`.
 - **Alternative**: `ALT_BASE` (fisse) più `ualt[exId] = [{id, short, name, sr?, note?, t?}]` tramite `applyUalt()`.
   - `t = {sets, mode, lo, hi, secs, dist, side}`: serie e obiettivo propri come li ha scritti l'utente; `sr` ne è la versione testuale (`rowSr(t,0)`), l'unica letta in allenamento. Senza `sr` la variante eredita quelli della riga.
@@ -184,7 +187,7 @@ Impostazione del suono a fine recupero (tre bip con Web Audio, tasto Prova) e sc
 - **Già discusso ma non fatto**: calendario settimanale (programma per giorno), settimana di scarico, misure corporee e foto dei progressi, modalità "seduta breve".
 - **Ogni tocco ridisegna tutta la pagina**: è il modo in cui funziona il runtime x-dc. Per andare oltre servirebbe dividere la scheda in più componenti o cambiare runtime.
 - **Programmi e impostazioni** in conflitto tra dispositivi: vince l'ultima modifica, senza fusione campo per campo.
-- **Disegni wger** solo per 11 esercizi; senza rete si vedono solo quelli già aperti almeno una volta (il service worker li salva al primo uso).
+- **Disegni** (wger e palestra): senza rete si vedono solo quelli già aperti almeno una volta (il service worker li salva al primo uso).
 - **Foto** solo in locale, in IndexedDB (non in localStorage, che su Safari ha circa 5 MB per tutto il sito). Non vanno nel backup né su Dropbox.
 - **Alternative** legate all'esercizio, non al programma: serie e obiettivo propri di una variante valgono in ogni programma in cui compare l'esercizio di partenza.
 - Il nome dell'opzione Dropbox "Allow public clients" non è stato verificato: se esiste, deve restare su Allow.
