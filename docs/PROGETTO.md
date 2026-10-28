@@ -22,7 +22,7 @@ La barra sta in fondo allo schermo, come nelle app iOS, sopra l'area del gesto H
 
 ### Schermata della seduta (in stile Hevy, sostituisce la vecchia Lista)
 - **In alto, fissa**: freccia per tornare ai Programmi, nome e descrizione della routine, timer di recupero (avvia il recupero della serie in corso), **Termina**. Sotto, lo stato di Dropbox (o “Dati salvati su questo telefono”).
-- **Statistiche**: durata (dalla prima azione), volume (kg × ripetizioni delle serie fatte), serie fatte su totali, barra di avanzamento e pulsante **Guidata**/**Lista** per cambiare modalità.
+- **Statistiche**: durata (dalla prima azione), volume (kg × ripetizioni delle serie fatte), serie fatte su totali, barra di avanzamento, tasto **Aa** (testo grande: righe, campi, spunte, nomi, barra e tastierino più grandi, colonne più larghe; anche in Regole) e pulsante **Guidata**/**Lista** per cambiare modalità.
 - **Blocchi**: titolo del blocco; superset e circuiti hanno una barra viola a sinistra.
 - **Ogni esercizio**:
   - miniatura rotonda (la tua foto se c'è, altrimenti la figura) e nome: toccandoli si apre la **scheda dettagli**;
@@ -81,7 +81,7 @@ Calendario del mese con i giorni di allenamento (abbreviazione della routine) e 
 Catalogo con nome, colore (tocco sul cerchio per cambiarlo) e kg. Si elimina con doppio tocco.
 
 ### Regole (in Altro)
-Impostazione del suono a fine recupero (tre bip con Web Audio, tasto Prova), interruttori “Durante l’allenamento” (tastierino della scheda; conto alla rovescia 3-2-1: un bip breve a 3, 2 e 1 secondi dalla fine del recupero e degli esercizi a tempo, solo con il suono attivo) e schede di regole (progressione, intensità, alternative, Dropbox…).
+Impostazione del suono a fine recupero (tre bip con Web Audio, tasto Prova), interruttori “Durante l’allenamento” (tastierino della scheda; testo grande nella seduta; conto alla rovescia 3-2-1: un bip breve a 3, 2 e 1 secondi dalla fine del recupero e degli esercizi a tempo, solo con il suono attivo) e schede di regole (progressione, intensità, alternative, Dropbox…).
 
 ### Editor
 - Elenco dei programmi con Modifica, Duplica ed Elimina; tasti Nuovo programma e Nuova cartella.

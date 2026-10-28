@@ -1180,6 +1180,33 @@ test('conto alla rovescia 3-2-1 prima della fine del recupero', async env => {
   await s.close();
 });
 
+test('testo grande nella seduta', async env => {
+  const s = await Session.open(env);
+  await s.load();
+  await s.openProg('Lunedì');
+  const c = s.card('Chest press (ancoraggio all’altezza del petto)');
+  const size = () => c.evaluate(e => {
+    const px = (sel, p) => parseFloat(getComputedStyle(e.querySelector(sel))[p]);
+    return { input: px('.set-in', 'fontSize'), check: px('.set-ck', 'width'), name: px('.wk-name', 'fontSize') };
+  });
+  assert.deepStrictEqual(await size(), { input: 16, check: 40, name: 17 });
+  const aa = s.pg.getByRole('button', { name: 'Testo grande' });
+  await aa.click();
+  assert.strictEqual(await aa.getAttribute('aria-pressed'), 'true');
+  assert.deepStrictEqual(await size(), { input: 20, check: 52, name: 21 });
+  assert.strictEqual((await s.lsJson(KEY)).big, true);
+  assert.strictEqual(await s.pg.evaluate(() => document.documentElement.scrollWidth), 390, 'niente scorrimento orizzontale');
+  const ph = await c.getByRole('textbox', { name: 'Ripetizioni serie 1' }).evaluate(e => e.scrollWidth <= e.clientWidth);
+  assert.ok(ph, '“12-15” entra nel campo');
+  await s.tab('Regole');
+  const sw = s.pg.getByRole('switch', { name: 'Testo grande nella seduta' });
+  assert.strictEqual(await sw.getAttribute('aria-checked'), 'true');
+  await sw.click();
+  await s.openProg('Lunedì');
+  assert.deepStrictEqual(await size(), { input: 16, check: 40, name: 17 });
+  await s.close();
+});
+
 test('scheda dettagli: disegno wger, crediti e menu', async env => {
   const prev = { ...OLD_SESSION, id: 'lun-2000', t: 2000, items: [{ slot: 'latpd', ex: 'latpd', name: 'Lat pulldown', met: 'r', log: '',
     sets: ['13', '12'].map((v, i) => ({ n: i + 1, kg: '18', v, ok: true, e: 'g', b: '' })) }] };
