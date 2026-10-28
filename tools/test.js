@@ -550,7 +550,7 @@ test('figura degli esercizi personalizzati', async env => {
   await s.pg.getByRole('button', { name: 'Aggiungi esercizio' }).first().click();
   await s.pg.getByPlaceholder('Nome dell’esercizio').fill('Affondo laterale');
   await s.pg.getByRole('button', { name: 'Quadricipiti', exact: true }).last().click();
-  await s.pg.getByRole('button', { name: 'Corpo libero', exact: true }).click();
+  await s.pg.getByRole('button', { name: 'Corpo libero', exact: true }).last().click();
   await s.pg.getByRole('button', { name: 'Crea e aggiungi', exact: true }).click();
   await s.pg.getByText('Generica', { exact: true }).waitFor();
 
@@ -583,6 +583,166 @@ test('figura degli esercizi personalizzati', async env => {
   await s.close();
 });
 
+test('esercizi da palestra con i disegni Everkinetic', async env => {
+  const s = await Session.open(env);
+  // Ogni esercizio del catalogo GYM ha tavola, miniatura e riga nei crediti.
+  const html = await (await s.ctx.request.get(s.url)).text();
+  const tpl = JSON.parse(html.match(/<script type="__bundler\/template">\n(.*?)\n  <\/script>/s)[1]);
+  const gym = [...tpl.matchAll(/\b(g\w+):\{ek:'([a-z0-9-]+)'/g)].map(m => m[1]);
+  const credits = fs.readFileSync(path.join(ROOT, 'img', 'ek', 'CREDITS.md'), 'utf8');
+  assert.ok(gym.length >= 60, 'esercizi da palestra: ' + gym.length);
+  for (const id of gym) {
+    assert.ok(fs.existsSync(path.join(ROOT, 'img', 'ek', id + '.jpg')) && fs.existsSync(path.join(ROOT, 'img', 'ek', id + '-t.jpg')), 'immagini di ' + id);
+    assert.ok(credits.includes('| `' + id + '` |'), 'crediti di ' + id);
+  }
+  assert.strictEqual(fs.readdirSync(path.join(ROOT, 'img', 'ek')).filter(f => f.endsWith('.jpg')).length, gym.length * 2, 'nessuna immagine in più');
+
+  // Un programma nuovo con la panca piana: serie e ripetizioni proposte, kg, miniatura, scheda e guidata.
+  await s.load();
+  await s.tab('Editor');
+  await s.pg.getByRole('button', { name: 'Nuovo programma' }).click();
+  await s.pg.getByRole('button', { name: 'Aggiungi esercizio' }).first().click();
+  await s.pg.getByPlaceholder('Cerca un esercizio').fill('panca piana con bil');
+  await s.pg.getByRole('button', { name: /^Panca piana con bilanciere/ }).click();
+  const prog = (await s.lsJson(KEY)).progs.find(p => p.name === 'Nuovo programma');
+  assert.deepStrictEqual((({ ex, sets, mode, lo, hi }) => ({ ex, sets, mode, lo, hi }))(prog.blocks[0].items[0]), { ex: 'gpanca', sets: 3, mode: 'reps', lo: '6', hi: '10' });
+  await s.openProg('Nuovo programma');
+  const c = s.card('Panca piana con bilanciere');
+  assert.match(await c.locator('[role=button][aria-label="Dettagli dell’esercizio"], button[aria-label="Dettagli dell’esercizio"]').first().evaluate(e => {
+    const t = e.querySelector('[style*="background-image"]') || e; return getComputedStyle(t).backgroundImage; }), /img\/ek\/gpanca-t\.jpg/);
+  await c.getByRole('textbox', { name: 'Kg serie 1' }).waitFor();
+  const d = await s.details(c);
+  const img = d.getByRole('img', { name: 'Disegno dell’esercizio: Panca piana con bilanciere' });
+  const src = (await img.getAttribute('style')).match(/url\("([^"]+)"\)/)[1];
+  assert.strictEqual(src, 'img/ek/gpanca.jpg');
+  assert.ok(await s.pg.evaluate(u => new Promise(r => { const i = new Image(); i.onload = () => r(i.naturalWidth > 0); i.onerror = () => r(false); i.src = u; }), src), 'tavola caricata');
+  assert.match(await d.getByRole('link', { name: 'CC BY-SA 4.0' }).getAttribute('href'), /creativecommons\.org\/licenses\/by-sa\/4\.0/);
+  assert.match(await d.getByRole('link', { name: 'everkinetic/data' }).getAttribute('href'), /github\.com\/everkinetic\/data/);
+  assert.strictEqual(await d.getByText('Come si fa a casa').count(), 0, 'niente figure da casa');
+  await d.getByText(/Mani poco più larghe delle spalle/).waitFor();
+  await d.getByRole('button', { name: 'Chiudi' }).click();
+  await s.pg.getByRole('button', { name: 'Guidata' }).click();
+  await s.pg.getByRole('img', { name: 'Disegno dell’esercizio: Panca piana con bilanciere' }).waitFor();
+  await s.close();
+});
+
+test('ricerca esercizi: luogo, attrezzatura, gruppo, preferiti e recenti', async env => {
+  const sess = (id, t, ex) => ({ ...OLD_SESSION, id: 'lun-' + t, t, items: ex.map(e => ({ slot: e, ex: e, name: e, met: 'r', log: '', sets: [{ n: 1, kg: '', v: '10', ok: true, e: '', b: '' }] })) });
+  const s = await Session.open(env, { seed: { [HKEY]: [sess('a', 3000, ['gpanca', 'latpd']), sess('b', 2000, ['squat'])] } });
+  await s.load();
+  await editProg(s, 'Lunedì');
+  await s.pg.getByRole('button', { name: 'Aggiungi esercizio' }).first().click();
+  const count = async () => +(await s.pg.getByRole('status').filter({ hasText: /esercizi?\b/ }).innerText()).match(/^\d+/)[0];
+  const subs = () => s.pg.locator('button:has(> span[aria-hidden="true"]) > span:nth-child(2) > span:nth-child(2)').allInnerTexts();
+  const names = () => s.pg.locator('button:has(> span[aria-hidden="true"]) > span:nth-child(2) > span:nth-child(1)').allInnerTexts();
+  const chip = label => s.pg.locator('.chip-row button', { hasText: new RegExp('^\\s*' + label + '\\s*$') });
+  const all = await count();
+  assert.ok(all >= 120, 'tutti gli esercizi: ' + all);
+
+  await s.pg.getByRole('button', { name: 'Palestra', exact: true }).click();
+  const gym = await count();
+  assert.ok(gym >= 66 && gym < all);
+  assert.ok((await subs()).every(x => !/· casa/.test(x)), 'in Palestra niente esercizi da casa');
+  assert.strictEqual(await chip('Elastico').count(), 0, 'niente filtro elastico in palestra');
+  await chip('Cavi').click();
+  assert.ok((await subs()).every(x => / · Cavi$/.test(x)), 'solo cavi');
+  await s.pg.locator('.chip-row button', { hasText: /^Petto$/ }).click();
+  assert.deepStrictEqual((await names()).sort(), ['Croci ai cavi']);
+  await s.pg.getByRole('button', { name: 'Azzera filtri' }).click();
+  assert.strictEqual(await count(), all);
+  await s.pg.getByRole('button', { name: 'Casa', exact: true }).click();
+  assert.strictEqual(await count(), all - gym);
+  await s.pg.getByPlaceholder('Cerca un esercizio').fill('elastico');
+  assert.ok((await count()) > 0 && (await count()) < all - gym, 'testo, anche sull’attrezzatura');
+  await s.pg.getByRole('button', { name: 'Azzera filtri' }).click();
+
+  // Preferiti: salvati nello stato (e quindi nel backup e su Dropbox).
+  const star = s.pg.getByRole('button', { name: 'Aggiungi “Panca piana con manubri” ai preferiti' });
+  await star.click();
+  await s.pg.getByRole('button', { name: 'Togli “Panca piana con manubri” dai preferiti' }).waitFor();
+  assert.deepStrictEqual((await s.lsJson(KEY)).fav, { gpancam: 1 });
+  await chip('Preferiti').click();
+  assert.deepStrictEqual(await names(), ['Panca piana con manubri']);
+  // Recenti: gli esercizi delle ultime sedute, dal più recente.
+  await chip('Recenti').click();
+  assert.deepStrictEqual(await names(), ['Panca piana con bilanciere', 'Lat pulldown in ginocchio (ancoraggio alto)', 'Squat con elastico']);
+  await chip('Recenti').click();
+  assert.strictEqual(await count(), all);
+
+  // Esercizio personalizzato con un attrezzo da palestra: filtri e kg.
+  await s.pg.getByPlaceholder('Nome dell’esercizio').fill('Curl Zottman');
+  await s.pg.getByRole('button', { name: 'Bicipiti', exact: true }).last().click();
+  await s.pg.getByRole('button', { name: 'Manubri', exact: true }).last().click();
+  await s.pg.getByRole('button', { name: 'Crea e aggiungi', exact: true }).click();
+  const cex = Object.values((await s.lsJson(KEY)).cex)[0];
+  assert.deepStrictEqual([cex.eq, cex.kg, cex.band], ['db', true, false]);
+  await s.pg.getByRole('button', { name: 'Aggiungi esercizio' }).first().click();
+  await s.pg.getByRole('button', { name: 'Palestra', exact: true }).click();
+  await chip('Manubri').click();
+  assert.ok((await names()).includes('Curl Zottman'));
+  await s.openProg('Lunedì');
+  await s.card('Curl Zottman').getByRole('textbox', { name: 'Kg serie 1' }).waitFor();
+  await s.close();
+});
+
+test('routine in cartelle', async env => {
+  const s = await Session.open(env);
+  await s.load();
+  const heads = () => s.pg.locator('button.fd-head .fd-name').allInnerTexts();
+  await s.tab('Programmi');
+  assert.strictEqual(await s.pg.locator('.fd-head').count(), 0, 'senza cartelle l’elenco resta com’era');
+
+  await s.tab('Editor');
+  await s.pg.getByRole('button', { name: 'Nuova cartella' }).click();
+  await s.pg.getByRole('button', { name: 'Nuova cartella' }).click();
+  const names = s.pg.getByRole('textbox', { name: 'Nome della cartella' });
+  await names.nth(0).fill('Casa');
+  await names.nth(1).fill('Palestra');
+  await s.pg.getByRole('combobox', { name: 'Cartella di “Lunedì”' }).selectOption({ label: 'Casa' });
+  await s.pg.getByRole('combobox', { name: 'Cartella di “Mercoledì”' }).selectOption({ label: 'Casa' });
+  await s.pg.getByRole('button', { name: 'Programma in questa cartella' }).nth(1).click();   // in Palestra
+  await s.pg.getByText('Modifica il programma: le modifiche si salvano da sole').waitFor();
+  assert.strictEqual(await s.pg.getByRole('combobox').inputValue(), (await s.lsJson(KEY)).fds[1].id, 'il programma nuovo nasce nella cartella');
+  await s.pg.getByRole('button', { name: /Tutti i programmi/ }).click();
+  await s.pg.getByRole('button', { name: 'Sposta la cartella su' }).nth(1).click();
+  let st = await s.lsJson(KEY);
+  assert.deepStrictEqual(st.fds.map(f => f.name), ['Palestra', 'Casa']);
+  const casa = st.fds[1].id;
+  assert.deepStrictEqual(st.progs.map(p => [p.name, p.fd === casa ? 'Casa' : p.fd ? 'Palestra' : '']),
+    [['Lunedì', 'Casa'], ['Mercoledì', 'Casa'], ['Venerdì', ''], ['Sabato', ''], ['Nuovo programma', 'Palestra']]);
+
+  // Duplica e Ripristina tengono la cartella.
+  await s.pg.locator('div', { has: s.pg.getByRole('combobox', { name: 'Cartella di “Lunedì”' }) }).last().getByRole('button', { name: /Duplica/ }).click();
+  await editProg(s, 'Lunedì');
+  await s.pg.getByRole('button', { name: 'Ripristina la versione originale' }).click();
+  await s.pg.getByRole('button', { name: 'Tocca di nuovo per ripristinare' }).click();
+  st = await s.lsJson(KEY);
+  assert.deepStrictEqual(st.progs.filter(p => p.fd === casa).map(p => p.name), ['Lunedì', 'Lunedì (copia)', 'Mercoledì']);
+
+  // Programmi: sezioni nell'ordine delle cartelle, chiuse e riaperte senza contare come modifica dei dati.
+  await s.tab('Programmi');
+  assert.deepStrictEqual(await heads(), ['Palestra', 'Casa', 'Senza cartella']);
+  const t0 = await s.pg.evaluate(k => localStorage.getItem(k + ':t'), KEY);
+  await s.pg.locator('button.fd-head', { hasText: 'Casa' }).click();
+  await s.pg.locator('article', { hasText: 'Mercoledì' }).waitFor({ state: 'detached' });
+  assert.strictEqual(await s.pg.locator('button.fd-head', { hasText: 'Casa' }).getAttribute('aria-expanded'), 'false');
+  assert.strictEqual(await s.pg.evaluate(k => localStorage.getItem(k + ':t'), KEY), t0, 'aprire o chiudere una cartella non è una modifica');
+  await s.load();
+  assert.strictEqual(await s.pg.locator('article', { hasText: 'Mercoledì' }).count(), 0, 'cartella chiusa anche dopo il riavvio');
+  await s.pg.locator('button.fd-head', { hasText: 'Casa' }).click();
+  await s.pg.locator('article', { hasText: 'Mercoledì' }).waitFor();
+
+  // Eliminare una cartella lascia i programmi, senza cartella.
+  await s.tab('Editor');
+  await s.pg.getByRole('button', { name: 'Elimina la cartella' }).nth(1).click();
+  await s.pg.getByRole('button', { name: /Tocca di nuovo: i programmi restano/ }).click();
+  st = await s.lsJson(KEY);
+  assert.deepStrictEqual(st.fds.map(f => f.name), ['Palestra']);
+  assert.strictEqual(st.progs.length, 6);
+  assert.ok(st.progs.filter(p => /Lunedì|Mercoledì/.test(p.name)).every(p => !p.fd));
+  await s.close();
+});
+
 test('miniature nell’editor e nella ricerca esercizi', async env => {
   const foto = 'data:image/png;base64,' + PNG.toString('base64');
   const s = await Session.open(env, { seed: { [PKEY]: { latpd: foto } } });
@@ -596,7 +756,12 @@ test('miniature nell’editor e nella ricerca esercizi', async env => {
   await s.pg.getByPlaceholder('Cerca un esercizio').waitFor();
   const thumbs = await s.pg.locator('button:has(> span[aria-hidden="true"])').evaluateAll(els => els.map(e => getComputedStyle(e.firstElementChild).backgroundImage));
   assert.ok(thumbs.length >= 55, 'una riga per esercizio: ' + thumbs.length);
-  assert.ok(thumbs.every(b => /^url\("data:image\/(svg\+xml|png)/.test(b)), 'ogni esercizio della ricerca ha la miniatura');
+  // Figura (svg) o foto per gli esercizi da casa, disegno Everkinetic per quelli da palestra.
+  assert.ok(thumbs.every(b => /^url\("(data:image\/(svg\+xml|png)|[^"]*\/img\/ek\/g\w+-t\.jpg")/.test(b)), 'ogni esercizio della ricerca ha la miniatura');
+  const ek = thumbs.filter(b => /img\/ek\//.test(b)).map(b => b.slice(5, -2));
+  assert.ok(ek.length >= 60, 'esercizi da palestra: ' + ek.length);
+  const ok = await s.pg.evaluate(us => Promise.all(us.map(u => new Promise(r => { const i = new Image(); i.onload = () => r(i.naturalWidth === 144); i.onerror = () => r(false); i.src = u; }))), ek);
+  assert.ok(ok.every(Boolean), 'miniature da palestra caricate');
   await s.close();
 });
 
