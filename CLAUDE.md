@@ -68,6 +68,7 @@ Icone Phosphor (`<i class="ph ph-nome">`): il template contiene solo le regole C
   Gli ID degli esercizi in `LIB` e in `GYM` (iniziano con `g`) e gli ID dei programmi originali (`lun`, `mer`, `ven`, `sab`) **non vanno mai rinominati**: storico, kg e record ci sono legati.
 - Un esercizio può comparire **una sola volta per programma**. L'editor lo impone, perché i dati sono indicizzati per esercizio.
 - Gli ID di programmi, blocchi, cartelle e sedute non devono contenere `-`.
+- Blocchi con `tmp: true` (“Aggiunti oggi”): esercizi aggiunti durante la seduta solo per oggi. `dropTmp()` li toglie in `finish()` e nell'archiviazione automatica di `loadState()`; `undo()` rimette il programma di prima (`prev.prog`). Dalla seduta alla ricerca esercizi dell'Editor si va con `startSwap()`/`startAdd()` (`pick.back` = programma a cui tornare) e si torna con `backTo()`.
 - Cartelle delle routine: `fds` (elenco ordinato) e `p.fd` sul programma; un `fd` che non corrisponde a nessuna cartella vale “Senza cartella”. Eliminare una cartella non elimina i programmi.
 - Lo stato salvato deve restare compatibile all'indietro. Se cambi formato, aggiungi una migrazione in `migrate()` o `loadState()`.
 - Sync Dropbox:

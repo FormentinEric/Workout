@@ -1081,6 +1081,74 @@ test('tastierino per kg e ripetizioni, passo dei kg e progressione', async env =
   await s.close();
 });
 
+test('sostituisci al volo e aggiungi un esercizio durante la seduta', async env => {
+  const s = await Session.open(env);
+  await s.load();
+  await s.openProg('Lunedì');
+  // Sostituisci: si sceglie un esercizio, diventa una variante selezionata, con dati separati.
+  await s.card('Chest press (ancoraggio all’altezza del petto)').getByRole('button', { name: 'Altre azioni' }).click();
+  await s.pg.getByRole('dialog').getByRole('button', { name: 'Sostituisci con un altro esercizio' }).click();
+  await s.pg.getByRole('heading', { name: 'Sostituisci' }).waitFor();
+  await s.pg.getByText(/^Al posto di “Chest press/).waitFor();
+  assert.strictEqual(await s.pg.getByRole('button', { name: 'Petto', exact: true, pressed: true }).count(), 1, 'filtro sul gruppo dell’esercizio');
+  await s.pg.getByRole('button', { name: 'Palestra', exact: true }).click();
+  await s.pg.getByRole('button', { name: /^Chest press alla macchina/ }).click();
+  const c = s.card('Chest press alla macchina');
+  await c.waitFor();
+  let st = await s.lsJson(KEY);
+  assert.strictEqual(st.alt['lun-chest'], 'gchestm');
+  assert.ok(st.ualt.chest.some(a => a.id === 'gchestm'), 'resta tra le alternative');
+  await c.getByRole('textbox', { name: 'Kg serie 1' }).fill('40');
+  assert.deepStrictEqual((await s.lsJson(KEY)).sv['lun-chest-0~gchestm'], { kg: '40' }, 'dati della variante');
+  // Si può tornare all'esercizio di partenza dalla stessa ricerca.
+  await c.getByRole('button', { name: 'Altre azioni' }).click();
+  await s.pg.getByRole('dialog').getByRole('button', { name: 'Sostituisci con un altro esercizio' }).click();
+  await s.pg.getByRole('button', { name: /^Chest press \(ancoraggio/ }).click();
+  await s.card('Chest press (ancoraggio all’altezza del petto)').waitFor();
+  assert.strictEqual((await s.lsJson(KEY)).alt['lun-chest'], '');
+
+  // Aggiungi: solo per oggi (blocco tolto a fine seduta) o anche nel programma.
+  const add = async (q, name, keep) => {
+    await s.pg.locator('button', { hasText: /^\s*Aggiungi esercizio\s*$/ }).click();
+    await s.pg.getByRole('heading', { name: 'Aggiungi alla seduta' }).waitFor();
+    if (keep) await s.pg.getByRole('button', { name: 'Anche nel programma' }).click();
+    await s.pg.getByPlaceholder('Cerca un esercizio').fill(q);
+    await s.pg.getByRole('button', { name: new RegExp('^' + name) }).click();
+    await s.card(name).waitFor();
+  };
+  await add('leg press', 'Leg press', false);
+  await add('leg ext', 'Leg extension', true);
+  const lun = async () => (await s.lsJson(KEY)).progs.find(p => p.id === 'lun').blocks;
+  let bl = await lun();
+  assert.deepStrictEqual(bl.filter(b => b.tmp).map(b => b.items.map(i => i.ex)), [['glegpressm']]);
+  assert.ok(bl.filter(b => !b.tmp).some(b => b.items.some(i => i.ex === 'glegextm')), 'nel programma');
+  await s.set(s.card('Leg press'), 1).click();
+  await s.finish();
+  await s.until(async () => (await s.lsJson(HKEY)).length === 1, 'seduta salvata');
+  assert.ok((await s.lsJson(HKEY))[0].items.some(i => i.ex === 'glegpressm'), 'nello storico');
+  bl = await lun();
+  assert.strictEqual(bl.filter(b => b.tmp).length, 0, 'tolto a fine seduta');
+  assert.ok(bl.some(b => b.items.some(i => i.ex === 'glegextm')), 'quello del programma resta');
+  await s.pg.getByRole('button', { name: 'Annulla' }).click();
+  await s.until(async () => (await lun()).some(b => b.tmp), 'annullando torna anche l’esercizio di oggi');
+  await s.close();
+});
+
+test('esercizi solo per oggi tolti anche dall’archiviazione automatica', async env => {
+  const prog = { ...GYM_PROG, blocks: [...GYM_PROG.blocks, { id: 'kt', title: 'Aggiunti oggi', type: 'single', rounds: 0, rest: 90, tmp: true,
+    items: [{ ex: 'glegpressm', name: 'Leg press', sets: 3, mode: 'reps', lo: '8', hi: '12', secs: 45, dist: '30', side: '', kg: '', note: '' }] }] };
+  const ieri = Date.now() - 2 * 86400000;
+  const s = await Session.open(env, { seed: { [KEY]: { ver: 2, progs: [prog], last: { gym1: ieri }, start: { gym1: ieri },
+    done: { 'gym1-glegpressm-0': 1 }, sv: { 'gym1-glegpressm-0': { kg: '100', v: '10' } } } } });
+  await s.load();
+  await s.pg.getByText(/non era stata conclusa/).waitFor();
+  const h = await s.lsJson(HKEY);
+  assert.strictEqual(h.length, 1);
+  assert.deepStrictEqual(h[0].items.map(i => i.ex), ['glegpressm'], 'l’esercizio di oggi è nello storico');
+  assert.deepStrictEqual((await s.lsJson(KEY)).progs[0].blocks.map(b => b.title), ['Blocco 1'], 'e non più nel programma');
+  await s.close();
+});
+
 test('scheda dettagli: disegno wger, crediti e menu', async env => {
   const prev = { ...OLD_SESSION, id: 'lun-2000', t: 2000, items: [{ slot: 'latpd', ex: 'latpd', name: 'Lat pulldown', met: 'r', log: '',
     sets: ['13', '12'].map((v, i) => ({ n: i + 1, kg: '18', v, ok: true, e: 'g', b: '' })) }] };

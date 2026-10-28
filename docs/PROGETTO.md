@@ -26,7 +26,7 @@ La barra sta in fondo allo schermo, come nelle app iOS, sopra l'area del gesto H
 - **Blocchi**: titolo del blocco; superset e circuiti hanno una barra viola a sinistra.
 - **Ogni esercizio**:
   - miniatura rotonda (la tua foto se c'è, altrimenti la figura) e nome: toccandoli si apre la **scheda dettagli**;
-  - menu ⋮: dettagli, cambia esercizio eseguito, copia i valori dell'ultima volta, azzera le serie dell'esercizio (doppio tocco);
+  - menu ⋮: dettagli, cambia esercizio eseguito, **sostituisci con un altro esercizio** (macchina occupata: si apre la ricerca filtrata sul gruppo e su casa/palestra, con in cima l'esercizio di partenza e le sue alternative; quello scelto diventa un'alternativa selezionata, con dati separati, e si torna alla seduta), copia i valori dell'ultima volta, azzera le serie dell'esercizio (doppio tocco);
   - chip: recupero (lo avvia), Nota (campo `logs`), esercizio eseguito (originale o alternativa, con dati separati per variante);
   - nota del programma, record in corso, stallo, suggerimento di progressione; elastici del catalogo con i kg sommati;
   - tabella **Serie · Precedente · Kg · Rip (o Tempo/Metri) · ✓**: “Precedente” è la serie dell'ultima volta; i campi mostrano gli stessi valori come segnaposto; negli esercizi a tempo ogni riga ha ▶ per avviare il tempo.
@@ -36,6 +36,7 @@ La barra sta in fondo allo schermo, come nelle app iOS, sopra l'area del gesto H
 - **Barra della serie in corso** (solo lista), fissa in basso: miniatura, esercizio, “Serie k di n · kg × ripetizioni” (i valori scritti o quelli proposti) e una ✓ grande, che fa la stessa cosa della ✓ della riga. Toccando il nome si torna alla riga.
 - **Scorrimento automatico**: dopo una spunta, se la serie successiva (anche nell'esercizio dopo) non si vede, la pagina scorre fino a portarla tra l'intestazione e gli elementi fissi in basso.
 - **Sforzo** (Facile, Giusta, Al limite): compare sotto la serie appena spuntata; toccando il numero di una serie fatta si riapre.
+- **Aggiungi esercizio** in fondo alla seduta: ricerca esercizi con “Solo per oggi” (blocco “Aggiunti oggi” del programma, tolto a fine seduta, anche nell'archiviazione automatica, e rimesso se si annulla) oppure “Anche nel programma” (nell'ultimo blocco singolo, o in un blocco nuovo). Poi si torna alla seduta, sull'esercizio aggiunto.
 - **Aggiungi serie / Rimuovi**: serie in più o in meno solo per questa seduta (`xs`). “Rimuovi” toglie l'ultima serie se non è spuntata e non scende sotto 1. Lo stesso si fa scorrendo l'ultima serie verso sinistra (compare “Elimina” in rosso): oltre metà riga o con uno scatto si elimina, altrimenti torna al suo posto. Le altre righe non si scorrono, perché i dati delle serie sono indicizzati per numero di serie.
 - **Scheda dettagli**: tua foto (con Rimuovi), disegno di wger se c'è (con autore e licenza), figure “Come si fa a casa”, oggetti e ancoraggio, nota, istruzioni, ultima volta con Copia, Video, Link, Aggiungi/Cambia foto.
 
@@ -114,7 +115,7 @@ Impostazione del suono a fine recupero (tre bip con Web Audio, tasto Prova), int
 ## Modello dati
 - **Programma**:
   ```
-  {id, name, focus, plan, fd?, blocks:[{id, title, type:'single'|'superset'|'circuit', rounds, rest,
+  {id, name, focus, plan, fd?, blocks:[{id, title, type:'single'|'superset'|'circuit', rounds, rest, tmp?,
     items:[{ex, name, sets, mode:'reps'|'max'|'time'|'dist', lo, hi, secs, dist, side, kg, note}]}]}
   ```
 - **Compilazione** (`compileProg`): righe `[bloccoId, exId, nome, sr, nota, kg]` con `sr` testuale (es. `4 × 12-15 per gamba`, `3 × 1:00`, `1 × 20 min`, `3 × 30 m`) più `meta[bloccoId] = {title, type, chain, giri, rest}`. Il resto del codice legge queste righe (`DAYS`).
@@ -132,7 +133,7 @@ Impostazione del suono a fine recupero (tre bip con Web Audio, tasto Prova), int
   ```
 - **Stato principale salvato**: `tab, done, sv, logs, links, mode, cur, alt, start, last, bands, combo, bandHint, eff, sound, lastExport, scombo, step, xs, progs, cex, ualt, fav, fds, fdShut, pad, inc, ver:2`. `pad` = tastierino della scheda (false se spento); `inc` = passo dei kg per esercizio `{id: 2.5}` (senza valore vale il passo dell'attrezzatura, `INC`). `fav` = esercizi preferiti `{id: 1}`; `fds` = cartelle delle routine `[{id, name}]` in ordine; `fdShut` = cartelle chiuse `{id: 1}` (`_` per “Senza cartella”).
 - **Serie in più o in meno della seduta**: `xs[`${programma}-${esercizio}`] = n` (anche negativo); il numero di serie è `nEff()` = pianificate + `xs`, almeno 1. Si azzera con la seduta (`clearTab`).
-- **Stato solo in memoria** (non salvato): `sheet`, `effOpen`, `noteOpen`, `mnDel`, `rsDel`, `ask`, filtri della ricerca (`pq`, `pgf`, `ppl`, `pfr`, `peq`), campo aperto nel tastierino (`kp`).
+- **Stato solo in memoria** (non salvato): `sheet`, `effOpen`, `noteOpen`, `mnDel`, `rsDel`, `ask`, filtri della ricerca (`pq`, `pgf`, `ppl`, `pfr`, `peq`), campo aperto nel tastierino (`kp`), scelta “solo per oggi” (`ptmp`).
 
 ## Avvio e app installata
 - Icona sulla Home (`apple-touch-icon.png`), `manifest.webmanifest` con nome, colori e icone, meta per la modalità a tutto schermo.
