@@ -999,6 +999,221 @@ test('scorrere l’ultima serie a sinistra la elimina', async env => {
   await s.close();
 });
 
+test('barra della serie in corso e scorrimento all’esercizio dopo', async env => {
+  const s = await Session.open(env);
+  await s.load();
+  await s.openProg('Lunedì');
+  const bar = s.pg.getByRole('group', { name: 'Serie in corso' });
+  await bar.getByText('Salto corda').waitFor();
+  await bar.getByText('Serie 1 di 1 · 2:00').waitFor();
+  // La riga in corso è visibile tra l'intestazione fissa e gli elementi fissi in basso.
+  const inView = () => s.pg.evaluate(() => {
+    const r = document.querySelector('.set-row.is-cur').getBoundingClientRect();
+    return r.top >= document.querySelector('.wk-head').getBoundingClientRect().bottom && r.bottom <= document.querySelector('.dock').getBoundingClientRect().top;
+  });
+  await bar.getByRole('button', { name: 'Segna come fatta la serie 1 di Salto corda' }).click();
+  assert.ok((await s.lsJson(KEY)).done['lun-corda-0'], 'spuntata dalla barra');
+  assert.strictEqual((await s.lsJson(KEY)).sv['lun-corda-0'].v, '2:00', 'con il valore proposto');
+  await bar.getByText('Lat pulldown in ginocchio (ancoraggio alto)').waitFor();
+  await bar.getByText('Serie 1 di 4 · — kg × 12-15').waitFor();
+  await s.until(inView, 'scorsa da sola alla serie dell’esercizio dopo');
+  // Toccando la barra si torna alla riga in corso.
+  await s.pg.evaluate(() => window.scrollTo(0, 0));
+  await bar.getByRole('button', { name: /^Vai alla serie in corso/ }).click();
+  await s.until(inView, 'riga in corso mostrata');
+  // Una serie fatta fuori ordine: la serie in corso diventa la successiva a quella, non torna indietro.
+  const chest = s.card('Chest press (ancoraggio all’altezza del petto)');
+  await s.set(chest, 1).click();
+  await bar.getByText('Serie 2 di 4').waitFor();
+  assert.strictEqual(await bar.getByText('Chest press (ancoraggio all’altezza del petto)').count(), 1);
+  assert.ok(await chest.locator('.set-row.is-cur').count(), 'la riga in corso è nella stessa card');
+  await s.until(inView, 'e resta visibile');
+  await s.pg.getByRole('button', { name: 'Guidata' }).click();
+  assert.strictEqual(await bar.count(), 0, 'nella guidata la barra non c’è');
+  await s.close();
+});
+
+// Routine da palestra con una seduta precedente, per tastierino e progressione dei kg.
+const GYM_PROG = { id: 'gym1', name: 'Palestra A', focus: '', plan: true, blocks: [{ id: 'k1', title: 'Blocco 1', type: 'single', rounds: 0, rest: 90,
+  items: [{ ex: 'gpanca', name: 'Panca piana con bilanciere', sets: 2, mode: 'reps', lo: '6', hi: '10', secs: 45, dist: '30', side: '', kg: '', note: '' }] }] };
+const GYM_SES = { id: 'gym1-5000', day: 'gym1', pname: 'Palestra A', t: 5000, start: null, auto: false, dn: 2, tot: 2,
+  items: [{ slot: 'gpanca', ex: 'gpanca', name: 'Panca piana con bilanciere', met: 'r', log: '', sets: [1, 2].map(n => ({ n, kg: '60', v: '10', ok: true, e: 'f', b: '' })) }] };
+
+test('tastierino per kg e ripetizioni, passo dei kg e progressione', async env => {
+  const s = await Session.open(env, { seed: { [KEY]: { ver: 2, progs: [GYM_PROG] }, [HKEY]: [GYM_SES] } });
+  await s.load();
+  await s.openProg('Palestra A');
+  const c = s.card('Panca piana con bilanciere');
+  await c.getByText('Range superato in tutte le serie: prova 62,5 kg (+2,5).').waitFor();
+  const kp = s.pg.getByRole('group', { name: 'Tastierino' });
+  const kg1 = c.getByRole('textbox', { name: 'Kg serie 1' });
+  assert.strictEqual(await kg1.getAttribute('inputmode'), 'none', 'niente tastiera dell’iPhone');
+  await kg1.click();
+  await kp.getByText('Serie 1 · Kg').waitFor();
+  assert.strictEqual(await s.pg.getByRole('group', { name: 'Serie in corso' }).count(), 0, 'il tastierino prende il posto della barra');
+  const key = name => kp.getByRole('button', { name, exact: true });
+  await key('Come l’ultima volta: 60').click();
+  await key('Più 2,5').click();
+  assert.strictEqual(await kg1.inputValue(), '62,5');
+  await key('Cancella').click();
+  await key('5').click();
+  assert.strictEqual(await kg1.inputValue(), '62,5', 'dopo un tasto si continua a scrivere');
+  await kp.getByRole('button', { name: 'Passo 2,5 kg' }).click();
+  await kp.getByRole('button', { name: 'Passo 5 kg' }).waitFor();
+  assert.deepStrictEqual((await s.lsJson(KEY)).inc, { gpanca: 5 });
+  await key('Avanti').click();
+  await kp.getByText('Serie 1 · Ripetizioni').waitFor();
+  await key('8').click();
+  await key('Avanti').click();
+  await kp.getByText('Serie 2 · Kg').waitFor();
+  await key('7').click();
+  await key('0').click();
+  let st = (await s.lsJson(KEY)).sv;
+  assert.deepStrictEqual([st['gym1-gpanca-0'], st['gym1-gpanca-1']], [{ kg: '62,5', v: '8' }, { kg: '70' }], 'il primo tasto sostituisce il valore');
+  await kp.getByRole('button', { name: 'Fatto' }).click();
+  assert.strictEqual(await kp.count(), 0);
+  // La spunta della riga chiude il tastierino.
+  await c.getByRole('textbox', { name: 'Ripetizioni serie 2' }).click();
+  await kp.waitFor();
+  await s.set(c, 2).click();
+  assert.strictEqual(await kp.count(), 0, 'chiuso dalla spunta');
+  // Con il tastierino spento torna la tastiera dell’iPhone.
+  await s.tab('Regole');
+  await s.pg.getByRole('switch', { name: 'Tastierino della scheda' }).click();
+  assert.strictEqual((await s.lsJson(KEY)).pad, false);
+  await s.openProg('Palestra A');
+  await kg1.click();
+  assert.strictEqual(await kg1.getAttribute('inputmode'), 'decimal');
+  assert.strictEqual(await kp.count(), 0);
+  await s.close();
+});
+
+test('sostituisci al volo e aggiungi un esercizio durante la seduta', async env => {
+  const s = await Session.open(env);
+  await s.load();
+  await s.openProg('Lunedì');
+  // Sostituisci: si sceglie un esercizio, diventa una variante selezionata, con dati separati.
+  await s.card('Chest press (ancoraggio all’altezza del petto)').getByRole('button', { name: 'Altre azioni' }).click();
+  await s.pg.getByRole('dialog').getByRole('button', { name: 'Sostituisci con un altro esercizio' }).click();
+  await s.pg.getByRole('heading', { name: 'Sostituisci' }).waitFor();
+  await s.pg.getByText(/^Al posto di “Chest press/).waitFor();
+  assert.strictEqual(await s.pg.getByRole('button', { name: 'Petto', exact: true, pressed: true }).count(), 1, 'filtro sul gruppo dell’esercizio');
+  await s.pg.getByRole('button', { name: 'Palestra', exact: true }).click();
+  await s.pg.getByRole('button', { name: /^Chest press alla macchina/ }).click();
+  const c = s.card('Chest press alla macchina');
+  await c.waitFor();
+  let st = await s.lsJson(KEY);
+  assert.strictEqual(st.alt['lun-chest'], 'gchestm');
+  assert.ok(st.ualt.chest.some(a => a.id === 'gchestm'), 'resta tra le alternative');
+  await c.getByRole('textbox', { name: 'Kg serie 1' }).fill('40');
+  assert.deepStrictEqual((await s.lsJson(KEY)).sv['lun-chest-0~gchestm'], { kg: '40' }, 'dati della variante');
+  // Si può tornare all'esercizio di partenza dalla stessa ricerca.
+  await c.getByRole('button', { name: 'Altre azioni' }).click();
+  await s.pg.getByRole('dialog').getByRole('button', { name: 'Sostituisci con un altro esercizio' }).click();
+  await s.pg.getByRole('button', { name: /^Chest press \(ancoraggio/ }).click();
+  await s.card('Chest press (ancoraggio all’altezza del petto)').waitFor();
+  assert.strictEqual((await s.lsJson(KEY)).alt['lun-chest'], '');
+
+  // Aggiungi: solo per oggi (blocco tolto a fine seduta) o anche nel programma.
+  const add = async (q, name, keep) => {
+    await s.pg.locator('button', { hasText: /^\s*Aggiungi esercizio\s*$/ }).click();
+    await s.pg.getByRole('heading', { name: 'Aggiungi alla seduta' }).waitFor();
+    if (keep) await s.pg.getByRole('button', { name: 'Anche nel programma' }).click();
+    await s.pg.getByPlaceholder('Cerca un esercizio').fill(q);
+    await s.pg.getByRole('button', { name: new RegExp('^' + name) }).click();
+    await s.card(name).waitFor();
+  };
+  await add('leg press', 'Leg press', false);
+  await add('leg ext', 'Leg extension', true);
+  const lun = async () => (await s.lsJson(KEY)).progs.find(p => p.id === 'lun').blocks;
+  let bl = await lun();
+  assert.deepStrictEqual(bl.filter(b => b.tmp).map(b => b.items.map(i => i.ex)), [['glegpressm']]);
+  assert.ok(bl.filter(b => !b.tmp).some(b => b.items.some(i => i.ex === 'glegextm')), 'nel programma');
+  await s.set(s.card('Leg press'), 1).click();
+  await s.finish();
+  await s.until(async () => (await s.lsJson(HKEY)).length === 1, 'seduta salvata');
+  assert.ok((await s.lsJson(HKEY))[0].items.some(i => i.ex === 'glegpressm'), 'nello storico');
+  bl = await lun();
+  assert.strictEqual(bl.filter(b => b.tmp).length, 0, 'tolto a fine seduta');
+  assert.ok(bl.some(b => b.items.some(i => i.ex === 'glegextm')), 'quello del programma resta');
+  await s.pg.getByRole('button', { name: 'Annulla' }).click();
+  await s.until(async () => (await lun()).some(b => b.tmp), 'annullando torna anche l’esercizio di oggi');
+  await s.close();
+});
+
+test('esercizi solo per oggi tolti anche dall’archiviazione automatica', async env => {
+  const prog = { ...GYM_PROG, blocks: [...GYM_PROG.blocks, { id: 'kt', title: 'Aggiunti oggi', type: 'single', rounds: 0, rest: 90, tmp: true,
+    items: [{ ex: 'glegpressm', name: 'Leg press', sets: 3, mode: 'reps', lo: '8', hi: '12', secs: 45, dist: '30', side: '', kg: '', note: '' }] }] };
+  const ieri = Date.now() - 2 * 86400000;
+  const s = await Session.open(env, { seed: { [KEY]: { ver: 2, progs: [prog], last: { gym1: ieri }, start: { gym1: ieri },
+    done: { 'gym1-glegpressm-0': 1 }, sv: { 'gym1-glegpressm-0': { kg: '100', v: '10' } } } } });
+  await s.load();
+  await s.pg.getByText(/non era stata conclusa/).waitFor();
+  const h = await s.lsJson(HKEY);
+  assert.strictEqual(h.length, 1);
+  assert.deepStrictEqual(h[0].items.map(i => i.ex), ['glegpressm'], 'l’esercizio di oggi è nello storico');
+  assert.deepStrictEqual((await s.lsJson(KEY)).progs[0].blocks.map(b => b.title), ['Blocco 1'], 'e non più nel programma');
+  await s.close();
+});
+
+test('conto alla rovescia 3-2-1 prima della fine del recupero', async env => {
+  const s = await Session.open(env);
+  await s.load();
+  await s.openProg('Lunedì');
+  // Frequenze degli oscillatori avviati: 660 Hz i bip del conto alla rovescia, 880/1175 il suono finale.
+  await s.pg.evaluate(() => { window.__osc = []; const C = window.AudioContext || window.webkitAudioContext, f = C.prototype.createOscillator;
+    C.prototype.createOscillator = function () { const o = f.call(this), st = o.start.bind(o); o.start = (...a) => { window.__osc.push(o.frequency.value); return st(...a); }; return o; }; });
+  const run = async () => {
+    await s.pg.clock.pauseAt(await s.pg.evaluate(() => Date.now()) + 1000);
+    await s.pg.evaluate(() => { window.__osc = []; });
+    await s.pg.getByRole('button', { name: 'Avvia il recupero' }).click();
+    const t0 = await s.pg.locator('#tm-text').innerText(), sec = +t0.split(':')[0] * 60 + +t0.split(':')[1];
+    await s.pg.clock.runFor((sec - 5) * 1000);
+    const before = await s.pg.evaluate(() => window.__osc.slice());
+    await s.pg.clock.runFor(6000);
+    const after = await s.pg.evaluate(() => window.__osc.slice());
+    await s.pg.getByText('Vai!').first().waitFor();
+    await s.pg.locator('.fade-in', { hasText: 'Tocca per chiudere' }).click();
+    await s.pg.getByRole('button', { name: 'Chiudi', exact: true }).click().catch(() => {});
+    return { before: before.length, pips: after.filter(f => f === 660).length, end: after.filter(f => f !== 660).length };
+  };
+  await s.pg.clock.install();
+  assert.deepStrictEqual(await run(), { before: 0, pips: 3, end: 3 });
+  await s.tab('Regole');
+  await s.pg.getByRole('switch', { name: 'Conto alla rovescia 3-2-1' }).click();
+  assert.strictEqual((await s.lsJson(KEY)).cd, false);
+  await s.openProg('Lunedì');
+  assert.deepStrictEqual(await run(), { before: 0, pips: 0, end: 3 }, 'spento: solo il suono finale');
+  await s.close();
+});
+
+test('testo grande nella seduta', async env => {
+  const s = await Session.open(env);
+  await s.load();
+  await s.openProg('Lunedì');
+  const c = s.card('Chest press (ancoraggio all’altezza del petto)');
+  const size = () => c.evaluate(e => {
+    const px = (sel, p) => parseFloat(getComputedStyle(e.querySelector(sel))[p]);
+    return { input: px('.set-in', 'fontSize'), check: px('.set-ck', 'width'), name: px('.wk-name', 'fontSize') };
+  });
+  assert.deepStrictEqual(await size(), { input: 16, check: 40, name: 17 });
+  const aa = s.pg.getByRole('button', { name: 'Testo grande' });
+  await aa.click();
+  assert.strictEqual(await aa.getAttribute('aria-pressed'), 'true');
+  assert.deepStrictEqual(await size(), { input: 20, check: 52, name: 21 });
+  assert.strictEqual((await s.lsJson(KEY)).big, true);
+  assert.strictEqual(await s.pg.evaluate(() => document.documentElement.scrollWidth), 390, 'niente scorrimento orizzontale');
+  const ph = await c.getByRole('textbox', { name: 'Ripetizioni serie 1' }).evaluate(e => e.scrollWidth <= e.clientWidth);
+  assert.ok(ph, '“12-15” entra nel campo');
+  await s.tab('Regole');
+  const sw = s.pg.getByRole('switch', { name: 'Testo grande nella seduta' });
+  assert.strictEqual(await sw.getAttribute('aria-checked'), 'true');
+  await sw.click();
+  await s.openProg('Lunedì');
+  assert.deepStrictEqual(await size(), { input: 16, check: 40, name: 17 });
+  await s.close();
+});
+
 test('scheda dettagli: disegno wger, crediti e menu', async env => {
   const prev = { ...OLD_SESSION, id: 'lun-2000', t: 2000, items: [{ slot: 'latpd', ex: 'latpd', name: 'Lat pulldown', met: 'r', log: '',
     sets: ['13', '12'].map((v, i) => ({ n: i + 1, kg: '18', v, ok: true, e: 'g', b: '' })) }] };

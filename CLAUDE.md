@@ -44,12 +44,13 @@ Icone Phosphor (`<i class="ph ph-nome">`): il template contiene solo le regole C
 - **Regola**: ogni binding usato fuori da un `sc-for` deve avere un default nell'oggetto `base` di `renderVals()`, anche se compare solo in una sezione.
 - **Immagini nel markup**: niente `<img src="{{ … }}">`. Il bootstrap inserisce il template nel documento prima dei binding e il browser scaricherebbe l'URL letterale `{{ … }}` (404 in console). Usare un `div` con `role="img"` e `background-image:{{ x }}`, dove il binding contiene tutto `url("…")`.
 - Barra delle sezioni: `tabs` (5 voci) in `<nav class="tabbar">` fissa in basso, visibile solo con `topOn`. La sezione `altro` elenca Elastici e Regole (`moreList`), che mostrano “‹ Altro” con `backOn`. Il contenitore fisso del timer usa `dockB`/`dockPad` per stare sopra la barra; nella seduta torna sul fondo.
-- Schermata della seduta: binding `wk*` (intestazione e statistiche), `sh*`/`mn*`/`al*` (scheda dettagli, menu, varianti, Termina), righe delle serie in `wkGroups[].items[].sets`.
+- Schermata della seduta: barra della serie in corso `now*` nel contenitore fisso `.dock`; `reveal(el)` porta un elemento nella parte visibile tra `.wk-head` (intestazione fissa) e `.dock`, la riga in corso ha la classe `is-cur`. Tastierino: binding `kp*` nello stesso contenitore, campo aperto in `st.kp = {tab, rid, k, f, fresh}`, aperto da `openKp()` (i campi hanno `inputmode=none` quando `pad` è attivo); il campo aperto ha la classe `kp-on`. Binding `wk*` (intestazione e statistiche), `sh*`/`mn*`/`al*` (scheda dettagli, menu, varianti, Termina), righe delle serie in `wkGroups[].items[].sets`.
 - **Prestazioni**: ogni `save()` o `forceUpdate()` ridisegna tutta la pagina. Il runtime riconverte ogni attributo `style` a ogni ridisegno, React confronta tutti i nodi (~1000 nella seduta), e il calcolo di `renderVals()` pesa poco. Quindi:
   - il timer non ridisegna: `tick()` scrive direttamente in `#tm-text .sc-interp` (lo span che il runtime crea per `{{ timerText }}`) e in `#tm-bar`; valori da `tmShow()`, gli stessi di `timerVals()`;
   - negli elementi ripetuti della seduta (`.wk-ex`, `.set-*`) gli stili fissi stanno nelle classi; inline restano solo i binding;
   - le card degli esercizi (`.wk-ex`) hanno `content-visibility:auto`: quelle fuori schermo non si disegnano.
   - lo scorrimento per eliminare l'ultima serie (`swipeRm()`, classi `.can-rm`/`.swiping`) muove la riga nel DOM senza ridisegni; elimina con `rmSet`, quindi con le stesse regole di “Rimuovi”.
+- **Testo grande** (`st.big`): classe `big` sul contenitore della seduta e su `.dock` (`bigCls`), con le regole `.big .set-*`, `.big .now-*`, `.big .kp-*`, `.big .wk-name`; le colonne delle righe si allargano in `cols`. Gli elementi nuovi della seduta vanno ingranditi lì.
 - **Animazioni**: classi in fondo allo stile globale della `<helmet>` (`.sheet*`, `.pop-up`, `.fade-in`, stato premuto `button:active`), tutte spente con `prefers-reduced-motion`. Le schede in basso (`.sheet-wrap`) si chiudono passando da `shDismiss(close)`, che le fa scivolare giù e dopo 200ms chiama `close`; il trascinamento della parte alta (`.sheet-grab`) è in `shDrag()`. Un'azione dentro una scheda che la chiude (es. scegliere una variante) può chiuderla subito.
 
 ## Invarianti da non rompere
@@ -68,6 +69,7 @@ Icone Phosphor (`<i class="ph ph-nome">`): il template contiene solo le regole C
   Gli ID degli esercizi in `LIB` e in `GYM` (iniziano con `g`) e gli ID dei programmi originali (`lun`, `mer`, `ven`, `sab`) **non vanno mai rinominati**: storico, kg e record ci sono legati.
 - Un esercizio può comparire **una sola volta per programma**. L'editor lo impone, perché i dati sono indicizzati per esercizio.
 - Gli ID di programmi, blocchi, cartelle e sedute non devono contenere `-`.
+- Blocchi con `tmp: true` (“Aggiunti oggi”): esercizi aggiunti durante la seduta solo per oggi. `dropTmp()` li toglie in `finish()` e nell'archiviazione automatica di `loadState()`; `undo()` rimette il programma di prima (`prev.prog`). Dalla seduta alla ricerca esercizi dell'Editor si va con `startSwap()`/`startAdd()` (`pick.back` = programma a cui tornare) e si torna con `backTo()`.
 - Cartelle delle routine: `fds` (elenco ordinato) e `p.fd` sul programma; un `fd` che non corrisponde a nessuna cartella vale “Senza cartella”. Eliminare una cartella non elimina i programmi.
 - Lo stato salvato deve restare compatibile all'indietro. Se cambi formato, aggiungi una migrazione in `migrate()` o `loadState()`.
 - Sync Dropbox:

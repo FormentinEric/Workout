@@ -22,17 +22,21 @@ La barra sta in fondo allo schermo, come nelle app iOS, sopra l'area del gesto H
 
 ### Schermata della seduta (in stile Hevy, sostituisce la vecchia Lista)
 - **In alto, fissa**: freccia per tornare ai Programmi, nome e descrizione della routine, timer di recupero (avvia il recupero della serie in corso), **Termina**. Sotto, lo stato di Dropbox (o “Dati salvati su questo telefono”).
-- **Statistiche**: durata (dalla prima azione), volume (kg × ripetizioni delle serie fatte), serie fatte su totali, barra di avanzamento e pulsante **Guidata**/**Lista** per cambiare modalità.
+- **Statistiche**: durata (dalla prima azione), volume (kg × ripetizioni delle serie fatte), serie fatte su totali, barra di avanzamento, tasto **Aa** (testo grande: righe, campi, spunte, nomi, barra e tastierino più grandi, colonne più larghe; anche in Regole) e pulsante **Guidata**/**Lista** per cambiare modalità.
 - **Blocchi**: titolo del blocco; superset e circuiti hanno una barra viola a sinistra.
 - **Ogni esercizio**:
   - miniatura rotonda (la tua foto se c'è, altrimenti la figura) e nome: toccandoli si apre la **scheda dettagli**;
-  - menu ⋮: dettagli, cambia esercizio eseguito, copia i valori dell'ultima volta, azzera le serie dell'esercizio (doppio tocco);
+  - menu ⋮: dettagli, cambia esercizio eseguito, **sostituisci con un altro esercizio** (macchina occupata: si apre la ricerca filtrata sul gruppo e su casa/palestra, con in cima l'esercizio di partenza e le sue alternative; quello scelto diventa un'alternativa selezionata, con dati separati, e si torna alla seduta), copia i valori dell'ultima volta, azzera le serie dell'esercizio (doppio tocco);
   - chip: recupero (lo avvia), Nota (campo `logs`), esercizio eseguito (originale o alternativa, con dati separati per variante);
   - nota del programma, record in corso, stallo, suggerimento di progressione; elastici del catalogo con i kg sommati;
   - tabella **Serie · Precedente · Kg · Rip (o Tempo/Metri) · ✓**: “Precedente” è la serie dell'ultima volta; i campi mostrano gli stessi valori come segnaposto; negli esercizi a tempo ogni riga ha ▶ per avviare il tempo.
 - **Spunta ✓**: avvia il recupero (nei superset “senza pausa” fino a fine giro). Se kg o valore sono vuoti salva quelli dell'ultima volta (o il minimo dell'obiettivo); i kg non si salvano se arrivano dagli elastici scelti.
-- **Serie in corso**: la prima non fatta nell'ordine della seduta (nei superset e nei circuiti alterna gli esercizi, come la guidata) ha il bordo viola e il numero pieno; il suo esercizio mostra “In corso”.
+- **Serie in corso**: la prima non fatta dopo l'ultima spuntata (all'apertura, o se dopo non ce ne sono, dall'inizio), nell'ordine della seduta: nei superset e nei circuiti alterna gli esercizi, come la guidata. Così una serie fatta fuori ordine non riporta indietro barra e scorrimento ha il bordo viola e il numero pieno; il suo esercizio mostra “In corso”.
+- **Tastierino** (al posto della tastiera dell'iPhone, disattivabile in Regole): toccando un campo kg o ripetizioni/metri si apre in basso, con il campo evidenziato e la riga sempre visibile sopra. Cifre e virgola (il primo tasto sostituisce il valore), ⌫, −/+ del passo (kg: il passo dell'esercizio, toccando “Passo” si sceglie tra 1, 1,25, 2, 2,5, 5 e 10 kg, salvato per esercizio; ripetizioni ±1; metri ±5), “Ultima” o “Proposto” (il valore dell'ultima volta o il minimo dell'obiettivo), “Avanti” (kg → ripetizioni → serie dopo) e “Fatto”. La spunta della serie lo chiude. I campi a tempo usano la tastiera normale.
+- **Barra della serie in corso** (solo lista), fissa in basso: miniatura, esercizio, “Serie k di n · kg × ripetizioni” (i valori scritti o quelli proposti) e una ✓ grande, che fa la stessa cosa della ✓ della riga. Toccando il nome si torna alla riga.
+- **Scorrimento automatico**: dopo una spunta, se la serie successiva (anche nell'esercizio dopo) non si vede, la pagina scorre fino a portarla tra l'intestazione e gli elementi fissi in basso.
 - **Sforzo** (Facile, Giusta, Al limite): compare sotto la serie appena spuntata; toccando il numero di una serie fatta si riapre.
+- **Aggiungi esercizio** in fondo alla seduta: ricerca esercizi con “Solo per oggi” (blocco “Aggiunti oggi” del programma, tolto a fine seduta, anche nell'archiviazione automatica, e rimesso se si annulla) oppure “Anche nel programma” (nell'ultimo blocco singolo, o in un blocco nuovo). Poi si torna alla seduta, sull'esercizio aggiunto.
 - **Aggiungi serie / Rimuovi**: serie in più o in meno solo per questa seduta (`xs`). “Rimuovi” toglie l'ultima serie se non è spuntata e non scende sotto 1. Lo stesso si fa scorrendo l'ultima serie verso sinistra (compare “Elimina” in rosso): oltre metà riga o con uno scatto si elimina, altrimenti torna al suo posto. Le altre righe non si scorrono, perché i dati delle serie sono indicizzati per numero di serie.
 - **Scheda dettagli**: tua foto (con Rimuovi), disegno di wger se c'è (con autore e licenza), figure “Come si fa a casa”, oggetti e ancoraggio, nota, istruzioni, ultima volta con Copia, Video, Link, Aggiungi/Cambia foto.
 
@@ -68,7 +72,7 @@ Calendario del mese con i giorni di allenamento (abbreviazione della routine) e 
 - **Settimana**: sedute e serie fatte rispetto al previsto per gruppo muscolare (mappa `MG`), con navigazione tra le settimane.
 - **Sincronizzazione Dropbox** (vedi sotto).
 - **Backup ed esportazione**:
-  - Esporta backup: JSON v2 con `hist`, `logs`, `links`, `alt`, `bands`, `combo`, `progs`, `cex`, `ualt`, `fav`, `fds`, `sound`;
+  - Esporta backup: JSON v2 con `hist`, `logs`, `links`, `alt`, `bands`, `combo`, `progs`, `cex`, `ualt`, `fav`, `fds`, `inc`, `sound`;
   - Esporta per Excel: CSV con `;` e BOM, una riga per serie, colonne Data, Ora, Programma, Esercizio, Serie, Kg, Valore, Unità, Sforzo, Elastici, Spuntata, Durata, Automatica;
   - Importa: unisce le sedute e ripristina programmi, esercizi personalizzati e alternative;
   - salvataggio dei file con condivisione iOS o download.
@@ -77,7 +81,7 @@ Calendario del mese con i giorni di allenamento (abbreviazione della routine) e 
 Catalogo con nome, colore (tocco sul cerchio per cambiarlo) e kg. Si elimina con doppio tocco.
 
 ### Regole (in Altro)
-Impostazione del suono a fine recupero (tre bip con Web Audio, tasto Prova) e schede di regole (progressione, intensità, alternative, Dropbox…).
+Impostazione del suono a fine recupero (tre bip con Web Audio, tasto Prova), interruttori “Durante l’allenamento” (tastierino della scheda; testo grande nella seduta; conto alla rovescia 3-2-1: un bip breve a 3, 2 e 1 secondi dalla fine del recupero e degli esercizi a tempo, solo con il suono attivo) e schede di regole (progressione, intensità, alternative, Dropbox…).
 
 ### Editor
 - Elenco dei programmi con Modifica, Duplica ed Elimina; tasti Nuovo programma e Nuova cartella.
@@ -97,8 +101,8 @@ Impostazione del suono a fine recupero (tre bip con Web Audio, tasto Prova) e sc
 ## Logiche principali
 - **Progressione**, calcolata sull'ultima seduta dello stesso programma ed esercizio:
   - serie mancanti → completale prima di aumentare;
-  - tutte al limite alto del range → aumenta la tensione;
-  - tutte "facili" nel range → aumenta;
+  - tutte al limite alto del range → aumenta la tensione (con i pesi: “prova X kg”, kg dell'ultima volta più il passo dell'esercizio);
+  - tutte "facili" nel range → aumenta (con i pesi, come sopra);
   - sotto il range e "al limite" → alleggerisci;
   - sotto il range e "facile" → spingi di più;
   - altrimenti +1 ripetizione.
@@ -111,7 +115,7 @@ Impostazione del suono a fine recupero (tre bip con Web Audio, tasto Prova) e sc
 ## Modello dati
 - **Programma**:
   ```
-  {id, name, focus, plan, fd?, blocks:[{id, title, type:'single'|'superset'|'circuit', rounds, rest,
+  {id, name, focus, plan, fd?, blocks:[{id, title, type:'single'|'superset'|'circuit', rounds, rest, tmp?,
     items:[{ex, name, sets, mode:'reps'|'max'|'time'|'dist', lo, hi, secs, dist, side, kg, note}]}]}
   ```
 - **Compilazione** (`compileProg`): righe `[bloccoId, exId, nome, sr, nota, kg]` con `sr` testuale (es. `4 × 12-15 per gamba`, `3 × 1:00`, `1 × 20 min`, `3 × 30 m`) più `meta[bloccoId] = {title, type, chain, giri, rest}`. Il resto del codice legge queste righe (`DAYS`).
@@ -127,9 +131,9 @@ Impostazione del suono a fine recupero (tre bip con Web Audio, tasto Prova) e sc
   {id:`${programma}-${t}`, day, pname, t, start, auto, dn, tot,
    items:[{slot, ex, name, met:'r'|'t'|'m', sets:[{n, kg, v, ok, e:'f'|'g'|'l'|'', b}], log}]}
   ```
-- **Stato principale salvato**: `tab, done, sv, logs, links, mode, cur, alt, start, last, bands, combo, bandHint, eff, sound, lastExport, scombo, step, xs, progs, cex, ualt, fav, fds, fdShut, ver:2`. `fav` = esercizi preferiti `{id: 1}`; `fds` = cartelle delle routine `[{id, name}]` in ordine; `fdShut` = cartelle chiuse `{id: 1}` (`_` per “Senza cartella”).
+- **Stato principale salvato**: `tab, done, sv, logs, links, mode, cur, alt, start, last, bands, combo, bandHint, eff, sound, lastExport, scombo, step, xs, progs, cex, ualt, fav, fds, fdShut, pad, inc, cd, big, ver:2`. `cd` = conto alla rovescia (false se spento); `big` = testo grande nella seduta. `pad` = tastierino della scheda (false se spento); `inc` = passo dei kg per esercizio `{id: 2.5}` (senza valore vale il passo dell'attrezzatura, `INC`). `fav` = esercizi preferiti `{id: 1}`; `fds` = cartelle delle routine `[{id, name}]` in ordine; `fdShut` = cartelle chiuse `{id: 1}` (`_` per “Senza cartella”).
 - **Serie in più o in meno della seduta**: `xs[`${programma}-${esercizio}`] = n` (anche negativo); il numero di serie è `nEff()` = pianificate + `xs`, almeno 1. Si azzera con la seduta (`clearTab`).
-- **Stato solo in memoria** (non salvato): `sheet`, `effOpen`, `noteOpen`, `mnDel`, `rsDel`, `ask`, filtri della ricerca (`pq`, `pgf`, `ppl`, `pfr`, `peq`).
+- **Stato solo in memoria** (non salvato): `sheet`, `effOpen`, `noteOpen`, `mnDel`, `rsDel`, `ask`, ultima serie spuntata per programma (`lastK`), filtri della ricerca (`pq`, `pgf`, `ppl`, `pfr`, `peq`), campo aperto nel tastierino (`kp`), scelta “solo per oggi” (`ptmp`).
 
 ## Avvio e app installata
 - Icona sulla Home (`apple-touch-icon.png`), `manifest.webmanifest` con nome, colori e icone, meta per la modalità a tutto schermo.
